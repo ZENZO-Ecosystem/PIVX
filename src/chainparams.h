@@ -183,6 +183,7 @@ protected:
     int64_t nTargetTimespan;
     int64_t nTargetTimespan_V2;
     int nLastPOWBlock;
+    int nReverseHFBlock;
     int64_t nPivxBadBlockTime;
     unsigned int nPivxBadBlocknBits;
     int nMasternodeCountDrift;

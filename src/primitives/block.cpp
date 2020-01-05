@@ -16,7 +16,7 @@
 uint256 CBlockHeader::GetHash() const
 {
     if (nVersion < 4)
-        return HashQuark(BEGIN(nVersion), END(nNonce));
+        return XEVAN(BEGIN(nVersion), END(nNonce));
 
     if (nVersion < 7)
         return Hash(BEGIN(nVersion), END(nAccumulatorCheckpoint));
