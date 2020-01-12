@@ -4307,12 +4307,12 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
             REJECT_INVALID, "high-hash");
 
     // Version 4 header must be used after Params().Zerocoin_StartHeight(). And never before.
-    if (block.GetBlockTime() > Params().Zerocoin_StartTime() && block.GetBlockTime() !=1538323043 ) {
+    if (block.GetBlockTime() > Params().Zerocoin_StartTime() && block.GetBlockTime() > 1578848274 ) {
         if(block.nVersion < Params().Zerocoin_HeaderVersion() && Params().NetworkID() != CBaseChainParams::REGTEST)
             return state.DoS(50, error("CheckBlockHeader() : block version must be above 4 after ZerocoinStartHeight"),
             REJECT_INVALID, "block-version");
     } else {
-        if (block.nVersion >= Params().Zerocoin_HeaderVersion() && block.GetBlockTime() !=1538323043 )
+        if (block.nVersion >= Params().Zerocoin_HeaderVersion() && block.GetBlockTime() > 1578848274 )
             return state.DoS(50, error("CheckBlockHeader() : block version must be below 4 before ZerocoinStartHeight"),
             REJECT_INVALID, "block-version");
     }
@@ -4673,7 +4673,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     if (pindexPrev) { // pindexPrev is only null on the first block which is a version 1 block.
         CScript expect = CScript() << nHeight;
         if (block.vtx[0].vin[0].scriptSig.size() < expect.size() ||
-            !std::equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin())) {
+            !std::equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin()) && block.GetBlockTime() > 1578848604) {
             return state.DoS(100, error("%s : block height mismatch in coinbase", __func__), REJECT_INVALID,
                              "bad-cb-height");
         }

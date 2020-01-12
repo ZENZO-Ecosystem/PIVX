@@ -49,6 +49,11 @@ public:
     CBigNum& operator=(const CBigNum& b);
     ~CBigNum();
 
+    // Initialize from a Hex String (for zerocoin modulus)
+    CBigNum(const std::string& str) {
+        SetHexBool(str);
+    }
+
     //CBigNum(char n) is not portable.  Use 'signed char' or 'unsigned char'.
     CBigNum(signed char n);
     CBigNum(short n);
