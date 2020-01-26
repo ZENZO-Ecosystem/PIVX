@@ -1271,7 +1271,7 @@ CAmount CWalletTx::GetUnlockedCredit() const
         const CTxOut& txout = vout[i];
 
         if (pwallet->IsSpent(hashTx, i) || pwallet->IsLockedCoin(hashTx, i)) continue;
-        if (fMasterNode && vout[i].nValue == 10000 * COIN) continue; // do not count MN-like outputs
+        if (fMasterNode && vout[i].nValue == 15000 * COIN) continue; // do not count MN-like outputs
 
         nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
         if (!Params().GetConsensus().MoneyRange(nCredit))
@@ -1304,8 +1304,8 @@ CAmount CWalletTx::GetLockedCredit() const
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE_ALL);
         }
 
-        // Add masternode collaterals which are handled like locked coins
-        else if (fMasterNode && vout[i].nValue == 10000 * COIN) {
+        // Add masternode collaterals which are handled likc locked coins
+        else if (fMasterNode && vout[i].nValue == 15000 * COIN) {
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
         }
 
@@ -1380,7 +1380,7 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit() const
         }
 
         // Add masternode collaterals which are handled likc locked coins
-        else if (fMasterNode && vout[i].nValue == 10000 * COIN) {
+        else if (fMasterNode && vout[i].nValue == 15000 * COIN) {
             nCredit += pwallet->GetCredit(txout, ISMINE_WATCH_ONLY);
         }
 
@@ -1903,11 +1903,11 @@ bool CWallet::AvailableCoins(
                 if (nCoinType == ONLY_DENOMINATED) {
                     found = IsDenominatedAmount(pcoin->vout[i].nValue);
                 } else if (nCoinType == ONLY_NOT10000IFMN) {
-                    found = !(fMasterNode && pcoin->vout[i].nValue == 10000 * COIN);
+                    found = !(fMasterNode && pcoin->vout[i].nValue == 15000 * COIN);
                 } else if (nCoinType == ONLY_NONDENOMINATED_NOT10000IFMN) {
                     if (IsCollateralAmount(pcoin->vout[i].nValue)) continue; // do not use collateral amounts
                     found = !IsDenominatedAmount(pcoin->vout[i].nValue);
-                    if (found && fMasterNode) found = pcoin->vout[i].nValue != 10000 * COIN; // do not use Hot MN funds
+                    if (found && fMasterNode) found = pcoin->vout[i].nValue != 15000 * COIN; // do not use Hot MN funds
                 } else if (nCoinType == ONLY_10000) {
                     found = pcoin->vout[i].nValue == 10000 * COIN;
                 } else {

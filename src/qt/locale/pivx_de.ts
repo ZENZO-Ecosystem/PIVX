@@ -1444,7 +1444,7 @@ Die staking Aktivität wird automatisch gestartet, sobald die Wallet genügend K
         <translation>Geben Sie dem Master Node einen Namen</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 10,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 15,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Eine Transaktion von 10'000 PIV wird gemacht&lt;/p&gt;&lt;p&gt;auf eine leere Adresse in Ihrer Wallet.&lt;/p&gt;&lt;p&gt;Die Adresse wird beschriftet mit dem Namen des Masternodes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
@@ -1656,7 +1656,7 @@ Sind sie sicher?</translation>
         <translation>masternode.conf File existiert nicht</translation>
     </message>
     <message>
-        <source>Not enough balance to create a masternode, 10,000 PIV required.</source>
+        <source>Not enough balance to create a masternode, 15,000 PIV required.</source>
         <translation>Nicht genügend Guthaben um einen Masternode zu erstellen, 10'000 PIV werden benötigt.</translation>
     </message>
     <message>
@@ -4827,8 +4827,8 @@ Präge entweder höhere Stückelungen (damit weniger Eingaben benötigt werdenn)
         <translation>Sie müssen einen privaten Masternode-Schlüssel in der Konfiguration festlegen. Bitte nutzen Sie die Dokumentation zwecks Hilfe.</translation>
     </message>
     <message>
-        <source>(51472 could be used only on mainnet)</source>
-        <translation>(51472 kann nur im Mainnet verwendet werden)</translation>
+        <source>(26210 could be used only on mainnet)</source>
+        <translation>(26210 kann nur im Mainnet verwendet werden)</translation>
     </message>
     <message>
         <source>(default: %s)</source>
@@ -4839,8 +4839,8 @@ Präge entweder höhere Stückelungen (damit weniger Eingaben benötigt werdenn)
         <translation>(default: 1)</translation>
     </message>
     <message>
-        <source>(must be 51472 for mainnet)</source>
-        <translation>(muss im Mainnet 51472 sein)</translation>
+        <source>(must be 26210 for mainnet)</source>
+        <translation>(muss im Mainnet 26210 sein)</translation>
     </message>
     <message>
         <source>Accept command line and JSON-RPC commands</source>

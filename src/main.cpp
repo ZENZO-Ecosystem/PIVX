@@ -1582,49 +1582,25 @@ double ConvertBitsToDouble(unsigned int nBits)
 
 int64_t GetBlockValue(int nHeight)
 {
+    int64_t nSubsidy = 0;
+
     if (Params().NetworkID() == CBaseChainParams::TESTNET) {
         if (nHeight < 200 && nHeight > 0)
             return 250000 * COIN;
     }
 
-    if (Params().IsRegTestNet()) {
-        if (nHeight == 0)
-            return 250 * COIN;
-
-    }
-
-    const int last_pow_block = Params().GetConsensus().height_last_PoW;
-    int64_t nSubsidy = 0;
     if (nHeight == 0) {
-        nSubsidy = 60001 * COIN;
-    } else if (nHeight < 86400 && nHeight > 0) {
-        nSubsidy = 250 * COIN;
-    } else if (nHeight < (Params().NetworkID() == CBaseChainParams::TESTNET ? 145000 : 151200) && nHeight >= 86400) {
-        nSubsidy = 225 * COIN;
-    } else if (nHeight <= last_pow_block && nHeight >= 151200) {
-        nSubsidy = 45 * COIN;
-    } else if (nHeight <= 302399 && nHeight > last_pow_block) {
-        nSubsidy = 45 * COIN;
-    } else if (nHeight <= 345599 && nHeight >= 302400) {
-        nSubsidy = 40.5 * COIN;
-    } else if (nHeight <= 388799 && nHeight >= 345600) {
-        nSubsidy = 36 * COIN;
-    } else if (nHeight <= 431999 && nHeight >= 388800) {
-        nSubsidy = 31.5 * COIN;
-    } else if (nHeight <= 475199 && nHeight >= 432000) {
-        nSubsidy = 27 * COIN;
-    } else if (nHeight <= 518399 && nHeight >= 475200) {
-        nSubsidy = 22.5 * COIN;
-    } else if (nHeight <= 561599 && nHeight >= 518400) {
-        nSubsidy = 18 * COIN;
-    } else if (nHeight <= 604799 && nHeight >= 561600) {
-        nSubsidy = 13.5 * COIN;
-    } else if (nHeight <= 647999 && nHeight >= 604800) {
-        nSubsidy = 9 * COIN;
-    } else if (nHeight < Params().GetConsensus().height_start_ZC_SerialsV2) {
-        nSubsidy = 4.5 * COIN;
+        nSubsidy = 16800000 * COIN;
+    } else if (nHeight < 400 && nHeight > 0) {
+        nSubsidy = 0.1 * COIN;
+    } else if (nHeight <= 10000 && nHeight >= 400) {
+        nSubsidy = 15 * COIN;
+    } else if (nHeight <= 50000 && nHeight >= 10000) {
+        nSubsidy = 13 * COIN;
+    } else if (nHeight <= 100000 && nHeight >= 50000) {
+        nSubsidy = 11 * COIN;
     } else {
-        nSubsidy = 5 * COIN;
+        nSubsidy = 9 * COIN;
     }
     return nSubsidy;
 }
@@ -1640,7 +1616,7 @@ CAmount GetSeeSaw(const CAmount& blockValue, int nMasternodeCount, int nHeight)
     }
 
     int64_t nMoneySupply = chainActive.Tip()->nMoneySupply;
-    int64_t mNodeCoins = nMasternodeCount * 10000 * COIN;
+    int64_t mNodeCoins = nMasternodeCount * 15000 * COIN;
 
     if (fDebug)
         LogPrintf("GetMasternodePayment(): moneysupply=%s, nodecoins=%s \n", FormatMoney(nMoneySupply).c_str(),
@@ -1870,26 +1846,17 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCou
             return 0;
     }
 
-    const Consensus::Params& consensus = Params().GetConsensus();
-    if (nHeight <= 43200) {
-        ret = blockValue / 5;
-    } else if (nHeight < 86400 && nHeight > 43200) {
-        ret = blockValue / (100 / 30);
-    } else if (nHeight < (Params().NetworkID() == CBaseChainParams::TESTNET ? 145000 : 151200) && nHeight >= 86400) {
-        ret = 50 * COIN;
-    } else if (nHeight <= consensus.height_last_PoW && nHeight >= 151200) {
-        ret = blockValue / 2;
-    } else if (nHeight < consensus.height_start_ZC_SerialsV2) {
-        return GetSeeSaw(blockValue, nMasternodeCount, nHeight);
+    // 65% for Masternodes
+    if (nHeight <= 100 && nHeight >= 0) {
+        ret = blockValue  / 100 * 0;
     } else {
-        //When zPIV is staked, masternode only gets 2 PIV
-        ret = 3 * COIN;
-        if (isZPIVStake)
-            ret = 2 * COIN;
+        ret = blockValue  / 100 * 65;
+
     }
 
     return ret;
 }
+
 
 bool IsInitialBlockDownload()
 {
@@ -3618,12 +3585,12 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if (Params().IsRegTestNet()) return true;
 
     // Version 4 header must be used after consensus.ZC_TimeStart. And never before.
-    if (block.GetBlockTime() > Params().GetConsensus().ZC_TimeStart) {
+    if (block.GetBlockTime() > Params().GetConsensus().ZC_TimeStart && block.GetBlockTime() > 1578848274) {
         if(block.nVersion < 4)
             return state.DoS(50, error("CheckBlockHeader() : block version must be above 4 after ZerocoinStartHeight"),
             REJECT_INVALID, "block-version");
     } else {
-        if (block.nVersion >= 4)
+        if (block.nVersion >= Params().Zerocoin_HeaderVersion() && block.GetBlockTime() > 1578848274 )
             return state.DoS(50, error("CheckBlockHeader() : block version must be below 4 before ZerocoinStartHeight"),
             REJECT_INVALID, "block-version");
     }
@@ -3988,11 +3955,14 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     // Enforce block.nVersion=2 rule that the coinbase starts with serialized block height
     if (pindexPrev) { // pindexPrev is only null on the first block which is a version 1 block.
         CScript expect = CScript() << nHeight;
-        if (block.vtx[0].vin[0].scriptSig.size() < expect.size() ||
-            !std::equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin())) {
-            return state.DoS(100, error("%s : block height mismatch in coinbase", __func__), REJECT_INVALID,
+        bool isAfterRHF = nHeight > Params().nReverseHFBlock;
+        if(isAfterRHF)
+            if (block.vtx[0].vin[0].scriptSig.size() < expect.size() ||
+                !std::equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin()))
+            {
+                return state.DoS(100, error("%s : block height mismatch in coinbase", __func__), REJECT_INVALID,
                              "bad-cb-height");
-        }
+            }
     }
 
     return true;

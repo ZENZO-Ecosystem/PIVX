@@ -1677,7 +1677,7 @@ It will start automatically as soon as the wallet has enough confirmations on an
         <translation>设置主节点名称</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 10,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 15,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;将进行10,000 PIV的交易&lt;/p&gt;&lt;p&gt;到您的钱包空地址&lt;/p&gt;&lt;p&gt;地址被标记在主节点的名称之下&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
@@ -1910,7 +1910,7 @@ Are you sure?</source>
         <translation>主节点配置文件不存在</translation>
     </message>
     <message>
-        <source>Not enough balance to create a masternode, 10,000 PIV required.</source>
+        <source>Not enough balance to create a masternode, 15,000 PIV required.</source>
         <translation>没有足够的余额创建主节点，需要10,000 PIV。</translation>
     </message>
     <message>
@@ -4418,7 +4418,7 @@ PIVX零币(zPIV)技术文件
         <source>
                            &lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;
                            A masternode is a computer running a full node PIVX core wallet with a
-                           requirement of 10,000 PIV secured collateral to provide extra services
+                           requirement of 15,000 PIV secured collateral to provide extra services
                            to the network and in return, receive a portion of the block reward
                            regularly.  These services include:
                            &lt;/p&gt;&lt;p align="justify"&gt;
@@ -4450,7 +4450,7 @@ PIVX零币(zPIV)技术文件
                            Requirements:
                            &lt;/p&gt;&lt;p align="justify"&gt;
                            &lt;ul&gt;
-                           &lt;li&gt;10,000 PIV per single Masternode instance&lt;/li&gt;
+                           &lt;li&gt;15,000 PIV per single Masternode instance&lt;/li&gt;
                            &lt;li&gt;Must be stored in a core wallet&lt;/li&gt;
                            &lt;li&gt;Need dedicated IP address&lt;/li&gt;
                            &lt;li&gt;Masternode wallet to remain online&lt;/li&gt;
@@ -4510,7 +4510,7 @@ PIVX零币(zPIV)技术文件
         <translation>什么是主节点控制器？</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;A Masternode Controller wallet is where the 10,000 PIV collateral can reside during a Controller-Remote masternode setup. It is a wallet that can activate the remote masternode wallet/s and allows you to keep your collateral coins offline while the remote masternode remains online. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;A Masternode Controller wallet is where the 15,000 PIV collateral can reside during a Controller-Remote masternode setup. It is a wallet that can activate the remote masternode wallet/s and allows you to keep your collateral coins offline while the remote masternode remains online. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;主节点控制器钱包是在控制器-远程主节点设置期间10,000 PIV附属品可以驻留的地方。这是一个可以激活远程主节点钱包的钱包/s，远程主节点保持在线的时候，可以让你的抵押品硬币离线。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
@@ -6450,7 +6450,7 @@ PIVX核心钱包</translation>
         <translation>您必须在配置中指定一个主节点privkey。有关帮助，请参阅文档。</translation>
     </message>
     <message>
-        <source>(51472 could be used only on mainnet)</source>
+        <source>(26210 could be used only on mainnet)</source>
         <translation>(51472只可在网上使用)</translation>
     </message>
     <message>
@@ -6462,7 +6462,7 @@ PIVX核心钱包</translation>
         <translation>(默认: 1)</translation>
     </message>
     <message>
-        <source>(must be 51472 for mainnet)</source>
+        <source>(must be 26210 for mainnet)</source>
         <translation>(主网必须为51472)</translation>
     </message>
     <message>

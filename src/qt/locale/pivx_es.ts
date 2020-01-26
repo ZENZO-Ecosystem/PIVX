@@ -1675,8 +1675,8 @@ It will start automatically as soon as the wallet has enough confirmations on an
         <translation>Establecer el nombre del Master Node</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 10,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>Una transacción de 10,000 PIV se hará a una nueva dirección vacía en tu billetera.  La dirección está etiquetada bajo el nombre de masternode. </translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 15,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>Una transacción de 15,000 PIV se hará a una nueva dirección vacía en tu billetera.  La dirección está etiquetada bajo el nombre de masternode. </translation>
     </message>
     <message>
         <source>Set Master Node’s IP and port</source>
@@ -1904,7 +1904,7 @@ Are you sure?</source>
         <translation>El archivo masternode.conf no existe</translation>
     </message>
     <message>
-        <source>Not enough balance to create a masternode, 10,000 PIV required.</source>
+        <source>Not enough balance to create a masternode, 15,000 PIV required.</source>
         <translation>No hay suficiente saldo para crear un masternode, se necesitan 10.000 PIV.</translation>
     </message>
     <message>
@@ -4426,7 +4426,7 @@ nuestro sitio de apoyo Freshdesk&lt;/a&gt;.
         <source>
                            &lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;
                            A masternode is a computer running a full node PIVX core wallet with a
-                           requirement of 10,000 PIV secured collateral to provide extra services
+                           requirement of 15,000 PIV secured collateral to provide extra services
                            to the network and in return, receive a portion of the block reward
                            regularly.  These services include:
                            &lt;/p&gt;&lt;p align="justify"&gt;
@@ -4458,7 +4458,7 @@ nuestro sitio de apoyo Freshdesk&lt;/a&gt;.
                            Requirements:
                            &lt;/p&gt;&lt;p align="justify"&gt;
                            &lt;ul&gt;
-                           &lt;li&gt;10,000 PIV per single Masternode instance&lt;/li&gt;
+                           &lt;li&gt;15,000 PIV per single Masternode instance&lt;/li&gt;
                            &lt;li&gt;Must be stored in a core wallet&lt;/li&gt;
                            &lt;li&gt;Need dedicated IP address&lt;/li&gt;
                            &lt;li&gt;Masternode wallet to remain online&lt;/li&gt;
@@ -4515,8 +4515,8 @@ Requisitos:
         <translation>¿Qué es un Controlador de Masternode?</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;A Masternode Controller wallet is where the 10,000 PIV collateral can reside during a Controller-Remote masternode setup. It is a wallet that can activate the remote masternode wallet/s and allows you to keep your collateral coins offline while the remote masternode remains online. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;Una billetera de Controlador de Masternode es donde los 10,000 PIV colaterales pueden residir durante una configuración de Masternode de Controlador-Remoto. Es una billetera que puede activar la/s billetera/s remota/s de masternode y te permite mantener tus monedas colaterales fuera de línea mientras el masternode remoto permanece en línea.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt; </translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;A Masternode Controller wallet is where the 15,000 PIV collateral can reside during a Controller-Remote masternode setup. It is a wallet that can activate the remote masternode wallet/s and allows you to keep your collateral coins offline while the remote masternode remains online. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;Una billetera de Controlador de Masternode es donde los 15,000 PIV colaterales pueden residir durante una configuración de Masternode de Controlador-Remoto. Es una billetera que puede activar la/s billetera/s remota/s de masternode y te permite mantener tus monedas colaterales fuera de línea mientras el masternode remoto permanece en línea.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt; </translation>
     </message>
     <message>
         <source>Frequently Asked Questions</source>
@@ -6423,8 +6423,8 @@ PIVX Core Wallet</translation>
         <translation>Debes especificar un masternodeprivkey en la configuración. Por favor mira la documentación por ayuda.</translation>
     </message>
     <message>
-        <source>(51472 could be used only on mainnet)</source>
-        <translation>(51472 puede ser utilizado solo en mainnet)</translation>
+        <source>(26210 could be used only on mainnet)</source>
+        <translation>(26210 puede ser utilizado solo en mainnet)</translation>
     </message>
     <message>
         <source>(default: %s)</source>
@@ -6435,8 +6435,8 @@ PIVX Core Wallet</translation>
         <translation>(predeterminado: 1)</translation>
     </message>
     <message>
-        <source>(must be 51472 for mainnet)</source>
-        <translation>(debe ser 51472 para un mainnet)</translation>
+        <source>(must be 26210 for mainnet)</source>
+        <translation>(debe ser 26210 para un mainnet)</translation>
     </message>
     <message>
         <source>Accept command line and JSON-RPC commands</source>

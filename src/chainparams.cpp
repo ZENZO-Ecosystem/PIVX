@@ -85,33 +85,27 @@ static void convertSeed6(std::vector<CAddress>& vSeedsOut, const SeedSpec6* data
 // + Contains no strange transactions
 static Checkpoints::MapCheckpoints mapCheckpoints =
     boost::assign::map_list_of
-    (259201, uint256("1c9121bf9329a6234bfd1ea2d91515f19cd96990725265253f4b164283ade5dd"))
-    (424998, uint256("f31e381eedb0ed3ed65fcc98cc71f36012bee32e8efd017c4f9fb0620fd35f6b"))
-    (616764, uint256("29dd0bd1c59484f290896687b4ffb6a49afa5c498caf61967c69a541f8191557")) //first block to use modifierV2
-    (623933, uint256("c7aafa648a0f1450157dc93bd4d7448913a85b7448f803b4ab970d91fc2a7da7"))
-    (791150, uint256("8e76f462e4e82d1bd21cb72e1ce1567d4ddda2390f26074ffd1f5d9c270e5e50"))
-    (795000, uint256("4423cceeb9fd574137a18733416275a70fdf95283cc79ad976ca399aa424a443"))
-    (863787, uint256("5b2482eca24caf2a46bb22e0545db7b7037282733faa3a42ec20542509999a64"))
-    (863795, uint256("2ad866818c4866e0d555181daccc628056216c0db431f88a825e84ed4f469067"))
-    (863805, uint256("a755bd9a22b63c70d3db474f4b2b61a1f86c835b290a081bb3ec1ba2103eb4cb"))
-    (867733, uint256("03b26296bf693de5782c76843d2fb649cb66d4b05550c6a79c047ff7e1c3ae15"))
-    (879650, uint256("227e1d2b738b6cd83c46d1d64617934ec899d77cee34336a56e61b71acd10bb2"))
-    (895400, uint256("7796a0274a608fac12d400198174e50beda992c1d522e52e5b95b884bc1beac6"))//block that serial# range is enforced
-    (895991, uint256("d53013ed7ea5c325b9696c95e07667d6858f8ff7ee13fecfa90827bf3c9ae316"))//network split here
-    (908000, uint256("202708f8c289b676fceb832a079ff6b308a28608339acbf7584de533619d014d"))
-    (1142400, uint256("98aff9d605bf123247f98b1e3a02567eb5799d208d78ec30fb89737b1c1f79c5"))
-    (1679090, uint256("f747ce055ba1b12e1f2e842bd480bc647210799359cb2e553ab292065e3419d6")) //!< First block with a "wrapped" serial spend
-    (1686229, uint256("bb42bf1e886a7c23474634c90893dd3d68a6ccbfea4ac92a98da5cad0c6a6cb7")) //!< Last block in the "wrapped" serial attack range
-    (1778954, uint256("0d3241268264a2908d6babf00d9cd1ffb83d93d7bb4e428820127fe227c2029c")) //!< Network split here
-    (1788528, uint256("ea9243ff8fc079fdd7a04f11fac415de4d98e1bb0dc38db6f79f8f8bbfdbe496")) //!< Network split here
-    (2153200, uint256("14e477e597d24549cac5e59d97d32155e6ec2861c1003b42d0566f9bf39b65d5")); //!< First v7 block
+    (0, uint256("0000024c78d7d2fb56363f7777bab06de80307ac751b02e843ca7ae62d2310d2"))
+	(100, uint256("00000a077be1f0b9850b8321fa847e5eb79fd939217596f51f1ea188b16284ea"))
+	(200, uint256("00000003b64c5a430505a05eb3fcada74ff5663829a2cb39be5678223f2f4e59"))
+	(300, uint256("0000000dbb7ac6312c6bbebd31c4dbf6baae9cd34d7ad5fcbe2e89b1c0681d3a"))
+	(400, uint256("0000000a6551d2f6addaffd58fcfc92f1cdb1f0ed91c4cce2b7c925124c51bdc"))
+	(500, uint256("d95c542234350153f61595a58c486485c9d9e01ea26b71614a1938779b4620ae"))
+	(600, uint256("ae353efb716ed1e28c2c597fe41358a9a79f979178dd3da2a568a02f5f9973c8"))
+	(383000, uint256("934c36d558b4ba0298cd6f8d928035eba557b8e1ad6728ee31616ab7edc92c88"))
+        (400000, uint256("ca732c0aa9808a052c2353bfba5face5d1b96e615bb6261a0775431f357770ec"))
+        (450000, uint256("0f189a57d8fa6c8459407075944928a3adbf5ad092d03e2844f30056d9e94b3f"))
+        (500000, uint256("2f134a9e6224bbef72691f38e23a2e55b156e5563917f1c0c1e286fec7c48161"))
+        (550000, uint256("5beb580ddf42d987e578147636d3f2b7bcdba410380c5d311e023fcb8a29fdf2"))
+        (585087, uint256("505d2cb0e9de48c2a33d119a0c8ab713f980cad9d07308692953e46608a2fe76"));
 static const Checkpoints::CCheckpointData data = {
     &mapCheckpoints,
-    1578332625, // * UNIX timestamp of last checkpoint block
-    5116987,    // * total number of transactions between genesis and last checkpoint
+    1573756508, // * UNIX timestamp of last checkpoint block
+    1193316,    // * total number of transactions between genesis and last checkpoint
                 //   (the tx=... number in the SetBestChain debug.log lines)
-    2000        // * estimated number of transactions per day after checkpoint
+    2881        // * estimated number of transactions per day after checkpoint
 };
+
 
 static Checkpoints::MapCheckpoints mapCheckpointsTestnet =
     boost::assign::map_list_of
@@ -232,10 +226,10 @@ public:
         vSeeds.push_back(CDNSSeedData("fuzzbawls.pw", "pivx.seed2.fuzzbawls.pw"));    // Secondary DNS Seeder from Fuzzbawls
         vSeeds.push_back(CDNSSeedData("warrows.dev", "dnsseed.pivx.warrows.dev"));    // Primery DNS Seeder from warrows
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 30);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 13);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 81);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 53);
         base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1, 63);     // starting with 'S'
-        base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 212);
+        base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 215);
         base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x02)(0x2D)(0x25)(0x33).convert_to_container<std::vector<unsigned char> >();
         base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x02)(0x21)(0x31)(0x2B).convert_to_container<std::vector<unsigned char> >();
         // BIP44 coin type is from https://github.com/satoshilabs/slips/blob/master/slip-0044.md

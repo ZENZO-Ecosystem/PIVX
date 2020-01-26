@@ -1678,7 +1678,7 @@ Cüzdanınız senkronize olduktan ve harcanmamış bakiyeniz yeterli miktarda on
         <translation>Masternode'unuzun Adını Belirleyin</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 10,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A transaction of 15,000 PIV will be made&lt;/p&gt;&lt;p&gt;to a new empty address in your wallet.&lt;/p&gt;&lt;p&gt;The Address is labeled under the master node's name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;10.000 PIV'lik bir transfer &lt;/p&gt;&lt;p&gt;yeni ve boş bir adrese yapılacaktır.&lt;/p&gt;&lt;p&gt;Adres Masternode'unuz ismi ile etiketlenecektir.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
@@ -1910,8 +1910,8 @@ Emin misiniz?</translation>
         <translation> masternode.conf dosyası bulunamadı</translation>
     </message>
     <message>
-        <source>Not enough balance to create a masternode, 10,000 PIV required.</source>
-        <translation>Masternode yaratmak için yetersiz bakiye, 10,000 PIV gerekmektedir.</translation>
+        <source>Not enough balance to create a masternode, 15,000 PIV required.</source>
+        <translation>Masternode yaratmak için yetersiz bakiye, 15,000 PIV gerekmektedir.</translation>
     </message>
     <message>
         <source>Error creating masternode</source>
@@ -4453,7 +4453,7 @@ zPIV Protokolü ile anonimleştirilmiş olacaktır.
         <source>
                            &lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;
                            A masternode is a computer running a full node PIVX core wallet with a
-                           requirement of 10,000 PIV secured collateral to provide extra services
+                           requirement of 15,000 PIV secured collateral to provide extra services
                            to the network and in return, receive a portion of the block reward
                            regularly.  These services include:
                            &lt;/p&gt;&lt;p align="justify"&gt;
@@ -4485,7 +4485,7 @@ zPIV Protokolü ile anonimleştirilmiş olacaktır.
                            Requirements:
                            &lt;/p&gt;&lt;p align="justify"&gt;
                            &lt;ul&gt;
-                           &lt;li&gt;10,000 PIV per single Masternode instance&lt;/li&gt;
+                           &lt;li&gt;15,000 PIV per single Masternode instance&lt;/li&gt;
                            &lt;li&gt;Must be stored in a core wallet&lt;/li&gt;
                            &lt;li&gt;Need dedicated IP address&lt;/li&gt;
                            &lt;li&gt;Masternode wallet to remain online&lt;/li&gt;
@@ -4494,7 +4494,7 @@ zPIV Protokolü ile anonimleştirilmiş olacaktır.
                          </source>
         <translation>
                            &lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;
-                           Tam düğüm PIVX core cüzdanını çalıştıran, gereken 10,000 PIV
+                           Tam düğüm PIVX core cüzdanını çalıştıran, gereken 15,000 PIV
                            teminat bakiyesini barındırarak ağa ekstra hizmetler sunan ve
                            karşılığında da her blok ödülünden düzenli olarak pay alan bir
                            bilgisayardır.Bu hizmetler aşağıdaki gibidir:
@@ -4527,7 +4527,7 @@ işletim maliyetleri sonrası pasif bir gelir sunar.
                            Gereksinimler:
                            &lt;/p&gt;&lt;p align="justify"&gt;
                            &lt;ul&gt;
-                           &lt;li&gt;Her Masternod için ayrı 10,000 PIV
+                           &lt;li&gt;Her Masternod için ayrı 15,000 PIV
                            &lt;li&gt;Core cüzdan içinde saklanmalıdır.&lt;/li&gt;
                            &lt;li&gt;Atanmış IP adresi gerekmektedir. &lt;/li&gt;
                            &lt;li&gt;Masternode cüzdanının online olması&lt;/li&gt;
@@ -4544,8 +4544,8 @@ işletim maliyetleri sonrası pasif bir gelir sunar.
         <translation>Masternode Kontrolörü nedir?</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;A Masternode Controller wallet is where the 10,000 PIV collateral can reside during a Controller-Remote masternode setup. It is a wallet that can activate the remote masternode wallet/s and allows you to keep your collateral coins offline while the remote masternode remains online. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;Masternode Kontrol cüzdanı Masternode Uzaktan-Kontrol kurulumu yapırken içinde 10,000 PIV teminatını bulundurur. Bu cüzdan uzak masternode cüzdan/larını etkinleştirebilir, ayrıca masternodlarınız online iken teminatınızı bağlantı dışında tutmanıza imkan sağlar. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;A Masternode Controller wallet is where the 15,000 PIV collateral can reside during a Controller-Remote masternode setup. It is a wallet that can activate the remote masternode wallet/s and allows you to keep your collateral coins offline while the remote masternode remains online. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;Masternode Kontrol cüzdanı Masternode Uzaktan-Kontrol kurulumu yapırken içinde 15,000 PIV teminatını bulundurur. Bu cüzdan uzak masternode cüzdan/larını etkinleştirebilir, ayrıca masternodlarınız online iken teminatınızı bağlantı dışında tutmanıza imkan sağlar. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Frequently Asked Questions</source>
@@ -6488,8 +6488,8 @@ Hoşgeldiniz</translation>
         <translation>Konfigürasyonda bir masternodeprivkey belirlemelisiniz.  Lütfen dokümantasyona bakınız.</translation>
     </message>
     <message>
-        <source>(51472 could be used only on mainnet)</source>
-        <translation>(51472 sadece mainnet üzerinde kullanılabilir)</translation>
+        <source>(26210 could be used only on mainnet)</source>
+        <translation>(26210 sadece mainnet üzerinde kullanılabilir)</translation>
     </message>
     <message>
         <source>(default: %s)</source>
@@ -6500,8 +6500,8 @@ Hoşgeldiniz</translation>
         <translation>(default: 1)</translation>
     </message>
     <message>
-        <source>(must be 51472 for mainnet)</source>
-        <translation>(mainnet için 51472 olmalıdır)</translation>
+        <source>(must be 26210 for mainnet)</source>
+        <translation>(mainnet için 26210 olmalıdır)</translation>
     </message>
     <message>
         <source>Accept command line and JSON-RPC commands</source>

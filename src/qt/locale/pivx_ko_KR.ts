@@ -1268,7 +1268,7 @@ for staking</source>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To create a PIVX Masternode you must dedicate 10.000 PIV (the unit of PIVX) to the network (however, these coins are still yours and will never leave your possession). &lt;/p&gt;&lt;p&gt;&lt;/p&gt;&lt;p&gt;You can deactivate the node and unlock the coins at any time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;PIVX 마스터노드 생성을 위해서는 최소 10,000 PIV (PIVX 단위) 가 네트워크 상에 존재해야 합니다. (해당 코인들의 소유권은 그대로 유지되며 사라지지 않습니다) &lt;/p&gt;&lt;p&gt;&lt;/p&gt;&lt;p&gt; 언제든지 소유하고 있는 노드를 비활성화 시키거나 코인의 잠금상태를 해제할 수 있습니다.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;PIVX 마스터노드 생성을 위해서는 최소 15,000 PIV (PIVX 단위) 가 네트워크 상에 존재해야 합니다. (해당 코인들의 소유권은 그대로 유지되며 사라지지 않습니다) &lt;/p&gt;&lt;p&gt;&lt;/p&gt;&lt;p&gt; 언제든지 소유하고 있는 노드를 비활성화 시키거나 코인의 잠금상태를 해제할 수 있습니다.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Set Master Node’s Name</source>
@@ -1415,7 +1415,7 @@ for staking</source>
         <translation>masternode.conf 파일이 생성되지 않았습니다.</translation>
     </message>
     <message>
-        <source>Not enough balance to create a masternode, 10,000 PIV required.</source>
+        <source>Not enough balance to create a masternode, 15,000 PIV required.</source>
         <translation>마스터노드 생성에 필요한 잔고가 부족합니다. 마스터노드 생성에는 10,000 PIV가 필요합니다.</translation>
     </message>
     </context>
@@ -3903,8 +3903,8 @@ Either mint higher denominations (so fewer inputs are needed) or reduce the amou
         <translation>환경설정에서 masternodeprivkey를 지정해야 합니다. 도움말을 참조하십시오.</translation>
     </message>
     <message>
-        <source>(51472 could be used only on mainnet)</source>
-        <translation>(51472 은 메인넷에서만 사용될 수 있습니다)</translation>
+        <source>(26210 could be used only on mainnet)</source>
+        <translation>(26210 은 메인넷에서만 사용될 수 있습니다)</translation>
     </message>
     <message>
         <source>(default: %s)</source>
@@ -3915,8 +3915,8 @@ Either mint higher denominations (so fewer inputs are needed) or reduce the amou
         <translation>(기본값: 1)</translation>
     </message>
     <message>
-        <source>(must be 51472 for mainnet)</source>
-        <translation>(메인넷 일경우 51472)</translation>
+        <source>(must be 26210 for mainnet)</source>
+        <translation>(메인넷 일경우 26210)</translation>
     </message>
     <message>
         <source>Accept command line and JSON-RPC commands</source>
