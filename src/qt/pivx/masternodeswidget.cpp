@@ -427,8 +427,8 @@ void MasterNodesWidget::onDeleteMNClicked(){
 
 void MasterNodesWidget::onCreateMNClicked(){
     if(verifyWalletUnlocked()) {
-        if(walletModel->getBalance() <= (COIN * 10000)){
-            inform(tr("Not enough balance to create a masternode, 10,000 ZNZ required."));
+        if(walletModel->getBalance() <= (COIN * 15000)){
+            inform(tr("Not enough balance to create a masternode, 15,000 ZNZ required."));
             return;
         }
         showHideOp(true);
