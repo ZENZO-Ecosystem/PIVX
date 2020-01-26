@@ -219,7 +219,6 @@ public:
         // vSeeds.push_back(CDNSSeedData("45.77.224.165", "45.77.224.165")); // Backup DNS Seeder
         // vSeeds.push_back(CDNSSeedData("45.76.117.67", "45.76.117.67")); // Backup Secondary DNS Seeder
         // vSeeds.push_back(CDNSSeedData("45.76.184.133", "45.76.184.133")); // Backup DNS Seeder
-        
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 81);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 53);
@@ -333,7 +332,6 @@ public:
         pchMessageStart[2] = 0x65;
         pchMessageStart[3] = 0xba;
         nDefaultPort = 51474;
-
         vFixedSeeds.clear();
         vSeeds.clear();
         vSeeds.push_back(CDNSSeedData("fuzzbawls.pw", "pivx-testnet.seed.fuzzbawls.pw"));
