@@ -44,7 +44,6 @@ SendWidget::SendWidget(PIVXGUI* parent) :
     ui->labelTitle->setFont(fontLight);
 
     /* Subtitle */
-    ui->labelSubtitle1->setText(tr("You can transfer ZNZ to other ZENZO addresses"));
     setCssProperty(ui->labelSubtitle1, "text-subtitle");
 
     /* Address */
