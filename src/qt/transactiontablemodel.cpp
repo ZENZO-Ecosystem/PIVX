@@ -455,13 +455,13 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
     case TransactionRecord::SendToSelf:
         return tr("Payment to yourself");
     case TransactionRecord::StakeMint:
-        return tr("PIV Stake");
+        return tr("ZNZ Stake");
     case TransactionRecord::StakeZPIV:
-        return tr("zPIV Stake");
+        return tr("zZNZ Stake");
     case TransactionRecord::StakeDelegated:
-        return tr("PIV Cold Stake");
+        return tr("ZNZ Cold Stake");
     case TransactionRecord::StakeHot:
-        return tr("PIV Stake on behalf of");
+        return tr("ZNZ Stake on behalf of");
     case TransactionRecord::P2CSDelegationSent:
     case TransactionRecord::P2CSDelegationSentOwner:
     case TransactionRecord::P2CSDelegation:
@@ -482,15 +482,15 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
     case TransactionRecord::Obfuscated:
         return tr("Obfuscated");
     case TransactionRecord::ZerocoinMint:
-        return tr("Converted PIV to zPIV");
+        return tr("Converted ZNZ to zZNZ");
     case TransactionRecord::ZerocoinSpend:
-        return tr("Spent zPIV");
+        return tr("Spent zZNZ");
     case TransactionRecord::RecvFromZerocoinSpend:
-        return tr("Received PIV from zPIV");
+        return tr("Received ZNZ from zZNZ");
     case TransactionRecord::ZerocoinSpend_Change_zPiv:
-        return tr("Minted Change as zPIV from zPIV Spend");
+        return tr("Minted Change as zZNZ from zZNZ Spend");
     case TransactionRecord::ZerocoinSpend_FromMe:
-        return tr("Converted zPIV to PIV");
+        return tr("Converted zZNZ to ZNZ");
     default:
         return QString();
     }

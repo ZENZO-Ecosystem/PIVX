@@ -32,7 +32,7 @@ class QUrl;
 class QWidget;
 QT_END_NAMESPACE
 
-/** Utility functions used by the PIVX Qt UI.
+/** Utility functions used by the ZENZO Qt UI.
  */
 namespace GUIUtil
 {
@@ -41,7 +41,7 @@ QString dateTimeStr(const QDateTime& datetime);
 QString dateTimeStrWithSeconds(const QDateTime& date);
 QString dateTimeStr(qint64 nTime);
 
-// Render PIVX addresses in monospace font
+// Render ZENZO addresses in monospace font
 QFont bitcoinAddressFont();
 
 // Parse string into a CAmount value

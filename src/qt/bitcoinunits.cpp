@@ -43,11 +43,11 @@ QString BitcoinUnits::id(int unit)
 {
     switch (unit) {
     case PIV:
-        return QString("pivx");
+        return QString("znz");
     case mPIV:
-        return QString("mpivx");
+        return QString("mznz");
     case uPIV:
-        return QString::fromUtf8("upivx");
+        return QString::fromUtf8("uznz");
     default:
         return QString("???");
     }
@@ -60,22 +60,22 @@ QString BitcoinUnits::name(int unit, bool isZpiv)
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         switch (unit) {
         case PIV:
-            return z + QString("PIV");
+            return z + QString("ZNZ");
         case mPIV:
-            return z + QString("mPIV");
+            return z + QString("mZNZ");
         case uPIV:
-            return z + QString::fromUtf8("μPIV");
+            return z + QString::fromUtf8("μZNZ");
         default:
             return QString("???");
         }
     } else {
         switch (unit) {
         case PIV:
-            return z + QString("tPIV");
+            return z + QString("tZNZ");
         case mPIV:
-            return z + QString("mtPIV");
+            return z + QString("mtZNZ");
         case uPIV:
-            return z + QString::fromUtf8("μtPIV");
+            return z + QString::fromUtf8("μtZNZ");
         default:
             return QString("???");
         }
@@ -87,22 +87,22 @@ QString BitcoinUnits::description(int unit)
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         switch (unit) {
         case PIV:
-            return QString("PIV");
+            return QString("ZNZ");
         case mPIV:
-            return QString("Milli-PIV (1 / 1" THIN_SP_UTF8 "000)");
+            return QString("Milli-ZNZ (1 / 1" THIN_SP_UTF8 "000)");
         case uPIV:
-            return QString("Micro-PIV (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+            return QString("Micro-ZNZ (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
         default:
             return QString("???");
         }
     } else {
         switch (unit) {
         case PIV:
-            return QString("TestPIVs");
+            return QString("TestZNZ");
         case mPIV:
-            return QString("Milli-TestPIV (1 / 1" THIN_SP_UTF8 "000)");
+            return QString("Milli-TestZNZ (1 / 1" THIN_SP_UTF8 "000)");
         case uPIV:
-            return QString("Micro-TestPIV (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+            return QString("Micro-TestZNZ (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
         default:
             return QString("???");
         }

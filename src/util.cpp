@@ -435,12 +435,15 @@ const boost::filesystem::path& GetDataDir(bool fNetSpecific)
 
     fs::path& path = fNetSpecific ? pathCachedNetSpecific : pathCached;
 
+    // ZENZO NOTICE:
+    // Disabled -datadir and cache temporarily as datadir path cache can interfere with PIVX Core files on the same system
+
     // This can be called during exceptions by LogPrintf(), so we cache the
     // value so we don't have to do memory allocations after that.
-    if (!path.empty())
-        return path;
+    /*if (!path.empty())
+        return path;*/
 
-    if (mapArgs.count("-datadir")) {
+    /*if (mapArgs.count("-datadir")) {
         path = fs::system_complete(mapArgs["-datadir"]);
         if (!fs::is_directory(path)) {
             path = "";
@@ -448,7 +451,11 @@ const boost::filesystem::path& GetDataDir(bool fNetSpecific)
         }
     } else {
         path = GetDefaultDataDir();
-    }
+    }*/
+
+    // Temp
+    path = GetDefaultDataDir();
+
     if (fNetSpecific)
         path /= BaseParams().DataDir();
 
@@ -465,7 +472,7 @@ void ClearDatadirCache()
 
 boost::filesystem::path GetConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-conf", "pivx.conf"));
+    boost::filesystem::path pathConfigFile(GetArg("-conf", "zenzo.conf"));
     if (!pathConfigFile.is_complete())
         pathConfigFile = GetDataDir(false) / pathConfigFile;
 
@@ -484,7 +491,7 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
 {
     boost::filesystem::ifstream streamConfig(GetConfigFile());
     if (!streamConfig.good()) {
-        // Create empty pivx.conf if it does not exist
+        // Create empty zenzo.conf if it does not exist
         FILE* configFile = fopen(GetConfigFile().string().c_str(), "a");
         if (configFile != NULL)
             fclose(configFile);
@@ -495,7 +502,7 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
     setOptions.insert("*");
 
     for (boost::program_options::detail::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it) {
-        // Don't overwrite existing settings so command line settings override pivx.conf
+        // Don't overwrite existing settings so command line settings override zenzo.conf
         std::string strKey = std::string("-") + it->string_key;
         std::string strValue = it->value[0];
         InterpretNegativeSetting(strKey, strValue);
@@ -510,7 +517,7 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
 #ifndef WIN32
 boost::filesystem::path GetPidFile()
 {
-    boost::filesystem::path pathPidFile(GetArg("-pid", "pivxd.pid"));
+    boost::filesystem::path pathPidFile(GetArg("-pid", "zenzod.pid"));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
