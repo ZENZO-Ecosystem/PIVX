@@ -569,6 +569,7 @@ void TopBar::updateBalances(const CAmount& balance, const CAmount& unconfirmedBa
 
     // Set
     QString totalPiv = GUIUtil::formatBalance(pivAvailableBalance, nDisplayUnit);
+
     QString totalzPiv = GUIUtil::formatBalance(0, nDisplayUnit, true);
 
     // PIV
