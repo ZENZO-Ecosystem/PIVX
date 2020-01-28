@@ -16,9 +16,7 @@
 #include "addresstablemodel.h"
 #include "coincontrol.h"
 #include "script/standard.h"
-#include "zpiv/deterministicmint.h"
 #include "openuridialog.h"
-#include "zpivcontroldialog.h"
 
 SendWidget::SendWidget(PIVXGUI* parent) :
     PWidget(parent),
@@ -45,19 +43,9 @@ SendWidget::SendWidget(PIVXGUI* parent) :
     setCssProperty(ui->labelTitle, "text-title-screen");
     ui->labelTitle->setFont(fontLight);
 
-    /* Button Group */
-    ui->pushLeft->setText("ZNZ");
-    setCssProperty(ui->pushLeft, "btn-check-left");
-    ui->pushLeft->setChecked(true);
-    ui->pushRight->setText("zZNZ");
-    setCssProperty(ui->pushRight, "btn-check-right");
-
     /* Subtitle */
-    ui->labelSubtitle1->setText(tr("You can transfer public coins (ZNZ) or private coins (zZNZ)"));
+    ui->labelSubtitle1->setText(tr("You can transfer ZNZ to other ZENZO addresses"));
     setCssProperty(ui->labelSubtitle1, "text-subtitle");
-
-    ui->labelSubtitle2->setText(tr("Select coin type to spend"));
-    setCssProperty(ui->labelSubtitle2, "text-subtitle");
 
     /* Address */
     ui->labelSubtitleAddress->setText(tr("ZENZO address or contact label"));
@@ -135,8 +123,6 @@ SendWidget::SendWidget(PIVXGUI* parent) :
     addEntry();
 
     // Connect
-    connect(ui->pushLeft, &QPushButton::clicked, [this](){onPIVSelected(true);});
-    connect(ui->pushRight,  &QPushButton::clicked, [this](){onPIVSelected(false);});
     connect(ui->pushButtonSave, SIGNAL(clicked()), this, SLOT(onSendClicked()));
     connect(ui->pushButtonAddRecipient, SIGNAL(clicked()), this, SLOT(onAddEntryClicked()));
     connect(ui->pushButtonClear, SIGNAL(clicked()), this, SLOT(clearAll()));
@@ -144,13 +130,8 @@ SendWidget::SendWidget(PIVXGUI* parent) :
 
 void SendWidget::refreshView(){
     QString btnText;
-    if(ui->pushLeft->isChecked()){
-        btnText = tr("Send ZNZ");
-        ui->pushButtonAddRecipient->setVisible(true);
-    }else{
-        btnText = tr("Send zZNZ");
-        ui->pushButtonAddRecipient->setVisible(false);
-    }
+    btnText = tr("Send ZNZ");
+    ui->pushButtonAddRecipient->setVisible(true);
     ui->pushButtonSave->setText(btnText);
 
     refreshAmounts();
@@ -167,7 +148,7 @@ void SendWidget::refreshAmounts() {
             total += amount;
     }
 
-    bool isZpiv = ui->pushRight->isChecked();
+    bool isZpiv = false;
     nDisplayUnit = walletModel->getOptionsModel()->getDisplayUnit();
 
     ui->labelAmountSend->setText(GUIUtil::formatBalance(total, nDisplayUnit, isZpiv));
@@ -319,7 +300,7 @@ void SendWidget::onSendClicked(){
         return;
     }
 
-    bool sendPiv = ui->pushLeft->isChecked();
+    bool sendPiv = true;
 
     // request unlock only if was locked or unlocked for mixing:
     // this way we let users unlock by walletpassphrase or by menu
@@ -331,7 +312,7 @@ void SendWidget::onSendClicked(){
         return;
     }
 
-    if((sendPiv) ? send(recipients) : sendZpiv(recipients)) {
+    if(send(recipients)) {
         updateEntryLabels(recipients);
     }
 }
@@ -389,97 +370,6 @@ bool SendWidget::send(QList<SendCoinsRecipient> recipients){
 
     dialog->deleteLater();
     return false;
-}
-
-bool SendWidget::sendZpiv(QList<SendCoinsRecipient> recipients){
-    if (!walletModel || !walletModel->getOptionsModel())
-        return false;
-
-    if(sporkManager.IsSporkActive(SPORK_16_ZEROCOIN_MAINTENANCE_MODE)) {
-        emit message(tr("Spend Zerocoin"), tr("zZNZ is currently undergoing maintenance."), CClientUIInterface::MSG_ERROR);
-        return false;
-    }
-
-    std::list<std::pair<CBitcoinAddress*, CAmount>> outputs;
-    CAmount total = 0;
-    for (SendCoinsRecipient rec : recipients){
-        total += rec.amount;
-        outputs.push_back(std::pair<CBitcoinAddress*, CAmount>(new CBitcoinAddress(rec.address.toStdString()),rec.amount));
-    }
-
-    // use mints from zZNZ selector if applicable
-    std::vector<CMintMeta> vMintsToFetch;
-    std::vector<CZerocoinMint> vMintsSelected;
-    if (!ZPivControlDialog::setSelectedMints.empty()) {
-        vMintsToFetch = ZPivControlDialog::GetSelectedMints();
-
-        for (auto& meta : vMintsToFetch) {
-            CZerocoinMint mint;
-            if (!walletModel->getMint(meta.hashSerial, mint)){
-                inform(tr("Coin control mint not found"));
-                return false;
-            }
-            vMintsSelected.emplace_back(mint);
-        }
-    }
-
-    QString sendBody = outputs.size() == 1 ?
-            tr("Sending %1 to address %2\n")
-            .arg(BitcoinUnits::formatWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), total, false, BitcoinUnits::separatorAlways))
-            .arg(recipients.first().address)
-            :
-           tr("Sending %1 to addresses:\n%2")
-           .arg(BitcoinUnits::formatWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), total, false, BitcoinUnits::separatorAlways))
-           .arg(recipientsToString(recipients));
-
-    bool ret = false;
-    Q_EMIT message(
-            tr("Spend Zerocoin"),
-            sendBody,
-            CClientUIInterface::MSG_INFORMATION | CClientUIInterface::BTN_MASK | CClientUIInterface::MODAL,
-            &ret);
-
-    if(!ret) return false;
-
-    CZerocoinSpendReceipt receipt;
-
-    std::string changeAddress = "";
-    if(!boost::get<CNoDestination>(&CoinControlDialog::coinControl->destChange)){
-        changeAddress = CBitcoinAddress(CoinControlDialog::coinControl->destChange).ToString();
-    }else{
-        changeAddress = walletModel->getAddressTableModel()->getAddressToShow().toStdString();
-    }
-
-    if (walletModel->sendZpiv(
-            vMintsSelected,
-            receipt,
-            outputs,
-            changeAddress
-    )
-            ) {
-        inform(tr("zZNZ transaction sent!"));
-        ZPivControlDialog::setSelectedMints.clear();
-        clearAll();
-        return true;
-    } else {
-        QString body;
-        if (receipt.GetStatus() == ZPIV_SPEND_V1_SEC_LEVEL) {
-            body = tr("Version 1 zZNZ require a security level of 100 to successfully spend.");
-        } else {
-            int nNeededSpends = receipt.GetNeededSpends(); // Number of spends we would need for this transaction
-            const int nMaxSpends = Params().GetConsensus().ZC_MaxSpendsPerTx; // Maximum possible spends for one zPIV transaction
-            if (nNeededSpends > nMaxSpends) {
-                body = tr("Too much inputs (") + QString::number(nNeededSpends, 10) +
-                       tr(") needed.\nMaximum allowed: ") + QString::number(nMaxSpends, 10);
-                body += tr(
-                        "\nEither mint higher denominations (so fewer inputs are needed) or reduce the amount to spend.");
-            } else {
-                body = QString::fromStdString(receipt.GetStatusMessage());
-            }
-        }
-        emit message("zZNZ transaction failed", body, CClientUIInterface::MSG_ERROR);
-        return false;
-    }
 }
 
 QString SendWidget::recipientsToString(QList<SendCoinsRecipient> recipients){
@@ -586,30 +476,18 @@ void SendWidget::onChangeCustomFeeClicked(){
 }
 
 void SendWidget::onCoinControlClicked(){
-    if(isPIV){
-        if (walletModel->getBalance() > 0) {
-            if (!coinControlDialog) {
-                coinControlDialog = new CoinControlDialog();
-                coinControlDialog->setModel(walletModel);
-            } else {
-                coinControlDialog->refreshDialog();
-            }
-            coinControlDialog->exec();
-            ui->btnCoinControl->setActive(CoinControlDialog::coinControl->HasSelected());
-            refreshAmounts();
+    if (walletModel->getBalance() > 0) {
+        if (!coinControlDialog) {
+            coinControlDialog = new CoinControlDialog();
+            coinControlDialog->setModel(walletModel);
         } else {
-            inform(tr("You don't have any ZNZ to select."));
+            coinControlDialog->refreshDialog();
         }
-    }else{
-        if (walletModel->getZerocoinBalance() > 0) {
-            ZPivControlDialog *zPivControl = new ZPivControlDialog(this);
-            zPivControl->setModel(walletModel);
-            zPivControl->exec();
-            ui->btnCoinControl->setActive(!ZPivControlDialog::setSelectedMints.empty());
-            zPivControl->deleteLater();
-        } else {
-            inform(tr("You don't have any zZNZ in your balance to select."));
-        }
+        coinControlDialog->exec();
+        ui->btnCoinControl->setActive(CoinControlDialog::coinControl->HasSelected());
+        refreshAmounts();
+    } else {
+        inform(tr("You don't have any ZNZ to select."));
     }
 }
 
@@ -619,7 +497,7 @@ void SendWidget::onValueChanged() {
 
 void SendWidget::onPIVSelected(bool _isPIV){
     isPIV = _isPIV;
-    setCssProperty(coinIcon, _isPIV ? "coin-icon-piv" : "coin-icon-zpiv");
+    setCssProperty(coinIcon, "coin-icon-piv");
     refreshView();
     updateStyle(coinIcon);
 }

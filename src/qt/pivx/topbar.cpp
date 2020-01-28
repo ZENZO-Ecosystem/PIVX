@@ -565,7 +565,7 @@ void TopBar::updateBalances(const CAmount& balance, const CAmount& unconfirmedBa
     // ZNZ Total
     CAmount pivAvailableBalance = balance;
     // zZNZ Balance
-    CAmount matureZerocoinBalance = zerocoinBalance - unconfirmedZerocoinBalance - immatureZerocoinBalance;
+    //CAmount matureZerocoinBalance = zerocoinBalance - unconfirmedZerocoinBalance - immatureZerocoinBalance;
 
     // Set
     QString totalPiv = GUIUtil::formatBalance(pivAvailableBalance, nDisplayUnit);
