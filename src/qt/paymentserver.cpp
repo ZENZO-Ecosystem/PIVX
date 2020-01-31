@@ -394,7 +394,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
                 } else
                     Q_EMIT receivedPaymentRequest(recipient);
             } else
-                emit message(tr("URI handling"),
+                    Q_EMIT message(tr("URI handling"),
                     tr("URI cannot be parsed! This can be caused by an invalid ZENZO address or malformed URI parameters."),
                     CClientUIInterface::ICON_WARNING);
 
