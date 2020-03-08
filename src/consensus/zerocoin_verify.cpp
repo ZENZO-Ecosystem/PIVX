@@ -278,19 +278,6 @@ bool RecalculatePIVSupply(int nHeightStart, bool fSkipZpiv)
             UpdateZPIVSupply(block, pindex, true);
         }
 
-        // Add fraudulent funds to the supply and remove any recovered funds.
-        if (pindex->nHeight == consensus.height_ZC_RecalcAccumulators) {
-            const CAmount nInvalidAmountFiltered = 268200*COIN;    //Amount of invalid coins filtered through exchanges, that should be considered valid
-            LogPrintf("%s : Original money supply=%s\n", __func__, FormatMoney(pindex->nMoneySupply));
-
-            pindex->nMoneySupply += nInvalidAmountFiltered;
-            LogPrintf("%s : Adding filtered funds to supply + %s : supply=%s\n", __func__, FormatMoney(nInvalidAmountFiltered), FormatMoney(pindex->nMoneySupply));
-
-            CAmount nLocked = GetInvalidUTXOValue();
-            pindex->nMoneySupply -= nLocked;
-            LogPrintf("%s : Removing locked from supply - %s : supply=%s\n", __func__, FormatMoney(nLocked), FormatMoney(pindex->nMoneySupply));
-        }
-
         assert(pblocktree->WriteBlockIndex(CDiskBlockIndex(pindex)));
 
         // Stop if shutdown was requested

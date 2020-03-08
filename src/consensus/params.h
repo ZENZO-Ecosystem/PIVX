@@ -62,11 +62,10 @@ struct Params {
     int height_start_StakeModifierV2;
     int height_start_TimeProtoV2;
     int height_start_ZC;
-    int height_start_ZC_InvalidSerials;
     int height_start_ZC_PublicSpends;
     int height_start_ZC_SerialRangeCheck;
     int height_start_ZC_SerialsV2;
-    int height_ZC_RecalcAccumulators;
+    int height_RHF;
 
     // validation by-pass
     int64_t nPivxBadBlockTime;
@@ -77,6 +76,7 @@ struct Params {
     uint256 ProofOfStakeLimit(const bool fV2) const { return fV2 ? posLimitV2 : posLimitV1; }
     bool MoneyRange(const CAmount& nValue) const { return (nValue >= 0 && nValue <= nMaxMoneyOut); }
     bool IsMessSigV2(const int nHeight) const { return nHeight >= height_start_MessSignaturesV2; }
+    bool IsPastRHFBlock(const int nHeight) const {reuturn nHeight >height_RHF; }
     bool IsTimeProtocolV2(const int nHeight) const { return nHeight >= height_start_TimeProtoV2; }
     bool IsStakeModifierV2(const int nHeight) const { return nHeight >= height_start_StakeModifierV2; }
 
@@ -121,13 +121,9 @@ struct Params {
 
     libzerocoin::ZerocoinParams* Zerocoin_Params(bool useModulusV1) const
     {
-        static CBigNum bnHexModulus = 0;
-        if (!bnHexModulus) bnHexModulus.SetHex(ZC_Modulus);
-        static libzerocoin::ZerocoinParams ZCParamsHex = libzerocoin::ZerocoinParams(bnHexModulus);
-        static CBigNum bnDecModulus = 0;
-        if (!bnDecModulus) bnDecModulus.SetDec(ZC_Modulus);
-        static libzerocoin::ZerocoinParams ZCParamsDec = libzerocoin::ZerocoinParams(bnDecModulus);
-        return (useModulusV1 ? &ZCParamsHex : &ZCParamsDec);
+        static CBigNum bnTrustedModulus(ZC_Modulus);
+        static libzerocoin::ZerocoinParams ZCParams = libzerocoin::ZerocoinParams(bnTrustedModulus);
+        return ZCParams;
     }
 };
 } // namespace Consensus
