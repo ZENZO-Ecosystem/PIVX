@@ -10,6 +10,7 @@
 #include "key.h"
 #include "pubkey.h"
 #include "sync.h"
+#include "wallet/hdchain.h"
 
 #include <boost/signals2/signal.hpp>
 
@@ -66,6 +67,7 @@ protected:
     KeyMap mapKeys;
     ScriptMap mapScripts;
     WatchOnlySet setWatchOnly;
+    CHDChain hdChain; /* the HD chain data model*/
     MultiSigScriptSet setMultiSig;
 
 public:
@@ -82,6 +84,7 @@ public:
     virtual bool RemoveWatchOnly(const CScript& dest);
     virtual bool HaveWatchOnly(const CScript& dest) const;
     virtual bool HaveWatchOnly() const;
+    bool GetHDChain(CHDChain& hdChainRet) const;
 
     virtual bool AddMultiSig(const CScript& dest);
     virtual bool RemoveMultiSig(const CScript& dest);
@@ -91,5 +94,8 @@ public:
 
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;
 typedef std::map<CKeyID, std::pair<CPubKey, std::vector<unsigned char> > > CryptedKeyMap;
+
+/** Checks if a CKey is in the given CKeyStore compressed or otherwise*/
+bool HaveKey(const CKeyStore& store, const CKey& key);
 
 #endif // BITCOIN_KEYSTORE_H

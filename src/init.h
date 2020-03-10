@@ -8,6 +8,7 @@
 #define BITCOIN_INIT_H
 
 #include <string>
+#include <vector>
 
 class CScheduler;
 class CWallet;
@@ -31,7 +32,8 @@ void PrepareShutdown();
 void InitLogging();
 //!Parameter interaction: change current parameters depending on various rules
 void InitParameterInteraction();
-bool AppInit2();
+
+bool AppInit2(const std::vector<std::string>& words);
 
 /** Initialize PIVX core: Basic context setup.
  *  @note This can be done before daemonization. Do not call Shutdown() if this function fails.

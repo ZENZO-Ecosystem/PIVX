@@ -12,7 +12,6 @@
 #include "wallet/hdchain.h"
 #include "key.h"
 #include "keystore.h"
-#include "script/keyorigin.h"
 #include "zpiv/zerocoin.h"
 #include "libzerocoin/Accumulator.h"
 #include "libzerocoin/Denominations.h"
@@ -53,15 +52,10 @@ class CKeyMetadata
 {
 public:
     // Metadata versions
-    static const int VERSION_BASIC = 1;
-    static const int VERSION_WITH_KEY_ORIGIN = 12;
-    // Active version
-    static const int CURRENT_VERSION = VERSION_WITH_KEY_ORIGIN;
+    static const int CURRENT_VERSION = 1;
 
     int nVersion;
     int64_t nCreateTime; // 0 means unknown
-    CKeyID hd_seed_id; //id of the HD seed used to derive this key
-    KeyOriginInfo key_origin; // Key origin info with path and fingerprint
 
     CKeyMetadata()
     {
@@ -69,7 +63,7 @@ public:
     }
     CKeyMetadata(int64_t nCreateTime_)
     {
-        SetNull();
+        nVersion = CKeyMetadata::CURRENT_VERSION;
         nCreateTime = nCreateTime_;
     }
 
@@ -79,24 +73,14 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
         READWRITE(this->nVersion);
+        nVersion = this->nVersion;
         READWRITE(nCreateTime);
-        if (HasKeyOrigin()) {
-            READWRITE(hd_seed_id);
-            READWRITE(key_origin);
-        }
     }
 
     void SetNull()
     {
         nVersion = CKeyMetadata::CURRENT_VERSION;
         nCreateTime = 0;
-        hd_seed_id.SetNull();
-        key_origin.clear();
-    }
-
-    bool HasKeyOrigin() const
-    {
-        return this->nVersion >= VERSION_WITH_KEY_ORIGIN;
     }
 };
 
@@ -155,9 +139,6 @@ public:
     bool ReadAccount(const std::string& strAccount, CAccount& account);
     bool WriteAccount(const std::string& strAccount, const CAccount& account);
 
-    //! write the hdchain model (external/internal chain child index counter)
-    bool WriteHDChain(const CHDChain& chain);
-
     /// Write destination data key,value tuple to database
     bool WriteDestData(const std::string& address, const std::string& key, const std::string& value);
     /// Erase destination data tuple from wallet database
@@ -173,6 +154,10 @@ public:
     static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
     static bool Recover(CDBEnv& dbenv, std::string filename);
 
+    //! write the hdchain model (external chain child index counter)
+    bool WriteHDChain(const CHDChain& chain);
+    bool WriteCryptedHDChain(const CHDChain& chain);
+    bool WriteHDPubKey(const CHDPubKey& hdPubKey, const CKeyMetadata& keyMeta);
     bool WriteDeterministicMint(const CDeterministicMint& dMint);
     bool ReadDeterministicMint(const uint256& hashPubcoin, CDeterministicMint& dMint);
     bool EraseDeterministicMint(const uint256& hashPubcoin);

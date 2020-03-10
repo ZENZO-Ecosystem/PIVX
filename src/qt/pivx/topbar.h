@@ -46,6 +46,8 @@ public Q_SLOTS:
     void setNumBlocks(int count);
     void setStakingStatusActive(bool fActive);
     void updateStakingStatus();
+    void setHDStatus(bool fActive);
+    void updateHDStatus();
 
 Q_SIGNALS:
     void themeChanged(bool isLight);
@@ -72,6 +74,7 @@ private:
 
     int nDisplayUnit = -1;
     QTimer* timerStakingIcon = nullptr;
+    QTimer* timerHDIcon = nullptr;
     bool isInitializing = true;
 
     void updateTorIcon();

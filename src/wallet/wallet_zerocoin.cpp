@@ -527,7 +527,7 @@ bool CWallet::CreateZCPublicSpendTransaction(
             CBitcoinAddress destinationAddr;
             if (addressesTo.size() == 0) {
                 CPubKey pubkey;
-                assert(reserveKey.GetReservedKey(pubkey)); // should never fail
+                assert(reserveKey.GetReservedKey(pubkey, false)); // should never fail
                 destinationAddr = CBitcoinAddress(pubkey.GetID());
                 addressesTo.push_back(std::make_pair(&destinationAddr, nValue));
             }
@@ -549,7 +549,7 @@ bool CWallet::CreateZCPublicSpendTransaction(
                 } else {
                     // Reserve a new key pair from key pool
                     CPubKey vchPubKey;
-                    assert(reserveKey.GetReservedKey(vchPubKey)); // should never fail
+                    assert(reserveKey.GetReservedKey(vchPubKey, false)); // should never fail
                     scriptChange = GetScriptForDestination(vchPubKey.GetID());
                 }
                 //mint change as zerocoins

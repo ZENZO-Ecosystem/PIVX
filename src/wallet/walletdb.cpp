@@ -253,12 +253,6 @@ bool CWalletDB::WriteMinVersion(int nVersion)
     return Write(std::string("minversion"), nVersion);
 }
 
-bool CWalletDB::WriteHDChain(const CHDChain& chain)
-{
-    nWalletDBUpdated++;
-    return Write(std::string("hdchain"), chain);
-}
-
 bool CWalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
 {
     account.SetNull();
@@ -601,7 +595,7 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
             ssKey >> nIndex;
             CKeyPool keypool;
             ssValue >> keypool;
-            pwallet->GetScriptPubKeyMan()->LoadKeyPool(nIndex, keypool);
+            pwallet->LoadKeyPool(nIndex, keypool);
         } else if (strType == "version") {
             ssValue >> wss.nFileVersion;
             if (wss.nFileVersion == 10300)
@@ -657,10 +651,45 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
                 strErr = "Error reading wallet database: LoadDestData failed";
                 return false;
             }
-        } else if (strType == "hdchain") {
+        }
+        else if (strType == "hdchain")
+        {
             CHDChain chain;
             ssValue >> chain;
-            pwallet->GetScriptPubKeyMan()->SetHDChain(chain, true);
+            if (!pwallet->SetHDChain(chain, true))
+            {
+                strErr = "Error reading wallet database: SetHDChain failed";
+                return false;
+            }
+        }
+        else if (strType == "chdchain")
+        {
+            CHDChain chain;
+            ssValue >> chain;
+            if (!pwallet->SetCryptedHDChain(chain, true))
+            {
+                strErr = "Error reading wallet database: SetHDCryptedChain failed";
+                return false;
+            }
+        }
+        else if (strType == "hdpubkey")
+        {
+            CPubKey vchPubKey;
+            ssKey >> vchPubKey;
+
+            CHDPubKey hdPubKey;
+            ssValue >> hdPubKey;
+
+            if(vchPubKey != hdPubKey.extPubKey.pubkey)
+            {
+                strErr = "Error reading wallet database: CHDPubKey corrupt";
+                return false;
+            }
+            if (!pwallet->LoadHDPubKey(hdPubKey))
+            {
+                strErr = "Error reading wallet database: LoadHDPubKey failed";
+                return false;
+            }
         }
     } catch (...) {
         return false;
@@ -670,8 +699,8 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
 
 static bool IsKeyType(std::string strType)
 {
-    return (strType == "key" || strType == "wkey" ||
-            strType == "mkey" || strType == "ckey");
+    return (strType == "mkey" || strType == "ckey" ||
+            strType == "hdchain" || strType == "chdchain");
 }
 
 DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
@@ -1100,7 +1129,7 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
             std::string strType, strErr;
             bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
                 wss, strType, strErr);
-            if (!IsKeyType(strType))
+            if (!IsKeyType(strType) && strType != "hdpubkey")
                 continue;
             if (!fReadOK) {
                 LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
@@ -1134,6 +1163,34 @@ bool CWalletDB::EraseDestData(const std::string& address, const std::string& key
 {
     nWalletDBUpdated++;
     return Erase(std::make_pair(std::string("destdata"), std::make_pair(address, key)));
+}
+
+bool CWalletDB::WriteHDChain(const CHDChain& chain)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("hdchain"), chain);
+}
+
+bool CWalletDB::WriteCryptedHDChain(const CHDChain& chain)
+{
+    nWalletDBUpdated++;
+
+    if (!Write(std::string("chdchain"), chain))
+        return false;
+
+    Erase(std::string("hdchain"));
+
+    return true;
+}
+
+bool CWalletDB::WriteHDPubKey(const CHDPubKey& hdPubKey, const CKeyMetadata& keyMeta)
+{
+    nWalletDBUpdated++;
+
+    if (!Write(std::make_pair(std::string("keymeta"), hdPubKey.extPubKey.pubkey), keyMeta, false))
+        return false;
+
+    return Write(std::make_pair(std::string("hdpubkey"), hdPubKey.extPubKey.pubkey), hdPubKey, false);
 }
 
 bool CWalletDB::WriteZerocoinSpendSerialEntry(const CZerocoinSpend& zerocoinSpend)

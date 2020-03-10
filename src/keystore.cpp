@@ -87,6 +87,12 @@ bool CBasicKeyStore::HaveWatchOnly() const
     return (!setWatchOnly.empty());
 }
 
+bool CBasicKeyStore::GetHDChain(CHDChain& hdChainRet) const
+{
+    hdChainRet = hdChain;
+    return !hdChain.IsNull();
+}
+
 bool CBasicKeyStore::AddMultiSig(const CScript& dest)
 {
     LOCK(cs_KeyStore);
@@ -147,4 +153,11 @@ bool CBasicKeyStore::GetKey(const CKeyID& address, CKey& keyOut) const
         }
     }
     return false;
+}
+
+bool HaveKey(const CKeyStore& store, const CKey& key)
+{
+    CKey key2;
+    key2.Set(key.begin(), key.end(), !key.IsCompressed());
+    return store.HaveKey(key.GetPubKey().GetID()) || store.HaveKey(key2.GetPubKey().GetID());
 }

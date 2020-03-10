@@ -10,7 +10,6 @@
 #include "base58.h"
 #include "core_io.h"
 #include "init.h"
-#include "key_io.h"
 #include "net.h"
 #include "netbase.h"
 #include "rpc/server.h"
@@ -208,25 +207,7 @@ UniValue getaddressinfo(const UniValue& params, bool fHelp)
     }
 
     // TODO: Backport IsChange.
-    //ret.pushKV("ischange", pwallet->IsChange(scriptPubKey));
-
-    ScriptPubKeyMan* spk_man = pwallet->GetScriptPubKeyMan();
-    if (spk_man) {
-        CKeyID keyID;
-        if (address.GetKeyID(keyID)) {
-            std::map<CKeyID, CKeyMetadata>::iterator it = pwallet->mapKeyMetadata.find(keyID);
-            if(it != pwallet->mapKeyMetadata.end()) {
-                const CKeyMetadata& meta = it->second;
-                ret.pushKV("timestamp", meta.nCreateTime);
-                if (meta.HasKeyOrigin()) {
-                    ret.pushKV("hdkeypath", meta.key_origin.pathToString());
-                    ret.pushKV("hdseedid", meta.hd_seed_id.GetHex());
-                    ret.pushKV("hdmasterfingerprint", HexStr(meta.key_origin.fingerprint, meta.key_origin.fingerprint + 4));
-                }
-            }
-        }
-    }
-
+    //ret.pushKV("ischange", pwallet->IsChange(scriptPubKey))
     // Return a `labels` array containing the label associated with the address,
     // equivalent to the `label` field above. Currently only one label can be
     // associated with an address, but we return an array so the API remains
@@ -243,111 +224,6 @@ UniValue getaddressinfo(const UniValue& params, bool fHelp)
     ret.pushKV("labels", std::move(labels));
 
     return ret;
-}
-
-CPubKey parseWIFKey(std::string strKey, CWallet* pwallet)
-{
-    CKey key = KeyIO::DecodeSecret(strKey);
-    if (!key.IsValid()) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
-    }
-
-    if (HaveKey(pwallet, key)) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Already have this key (either as an HD seed or as a loose private key)");
-    }
-    return pwallet->GetScriptPubKeyMan()->DeriveNewSeed(key);
-}
-
-UniValue upgradewallet(const UniValue& params, bool fHelp)
-{
-    if (fHelp || params.size() != 0)
-        throw std::runtime_error("upgradewallet\n"
-                                 "Bump the wallet features to the latest supported version. Non-HD wallets will be upgraded to HD wallet functionality. "
-                                 "Marking all the previous keys as pre-split keys and managing them separately. Once the last key in the pre-split keypool gets marked as used (received balance), the wallet will automatically start using the HD generated keys.\n"
-                                 "The upgraded HD wallet will have a new HD seed set so that new keys added to the keypool will be derived from this new seed.\n"
-                                 "Wallets that are already runnning the latest HD version will not be upgraded\n"
-                                 "\nNote that you will need to MAKE A NEW BACKUP of your wallet after upgrade it.\n"
-                                 + HelpExampleCli("upgradewallet", "") + HelpExampleRpc("upgradewallet", "")
-        );
-
-    EnsureWallet();
-    EnsureWalletIsUnlocked();
-
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-
-    // Do not do anything to non-HD wallets
-    if (pwalletMain->IsHDEnabled()) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Cannot upgrade the wallet. The wallet is already running the latest version");
-    }
-
-    // Get version
-    int prev_version = pwalletMain->GetVersion();
-    // Upgrade wallet's version
-    pwalletMain->SetMinVersion(FEATURE_LATEST);
-    pwalletMain->SetMaxVersion(FEATURE_LATEST);
-
-    // Upgrade to HD
-    std::string upgradeError;
-    if (!pwalletMain->Upgrade(upgradeError, prev_version)) {
-        upgradeError = strprintf("Error: Cannot upgrade wallet, %s", upgradeError);
-        throw JSONRPCError(RPC_WALLET_ERROR, upgradeError);
-    }
-
-    return NullUniValue;
-}
-
-UniValue sethdseed(const UniValue& params, bool fHelp)
-{
-    CWallet* pwallet = pwalletMain;
-
-    if (!pwallet) {
-        return NullUniValue;
-    }
-
-    if (fHelp || params.size() > 2)
-        throw std::runtime_error("sethdseed ( newkeypool \"seed\" )\n"
-               "Set or generate a new HD wallet seed. Non-HD wallets will not be upgraded to being a HD wallet. Wallets that are already\n"
-               "HD will have a new HD seed set so that new keys added to the keypool will be derived from this new seed.\n"
-               "\nNote that you will need to MAKE A NEW BACKUP of your wallet after setting the HD wallet seed.\n\n"
-               "\nArguments:\n"
-               "1. newkeypool (boolean, optional, default true): Whether to flush old unused addresses, including change addresses, from the keypool and regenerate it.\n"
-               "           If true, the next address from getnewaddress and change address from getrawchangeaddress will be from this new seed.\n"
-               "           If false, addresses (including change addresses if the wallet already had HD Chain Split enabled) from the existing\n"
-               "           keypool will be used until it has been depleted."
-               "2. \"seed\" (string, optional, default random seed): The WIF private key to use as the new HD seed.\n"
-               "           The seed value can be retrieved using the dumpwallet command. It is the private key marked hdseed=1"
-               + HelpExampleCli("sethdseed", "")
-               + HelpExampleCli("sethdseed", "false")
-               + HelpExampleCli("sethdseed", "true \"wifkey\"")
-               + HelpExampleRpc("sethdseed", "true, \"wifkey\"")
-        );
-
-    if (IsInitialBlockDownload()) {
-        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Cannot set a new HD seed while still in Initial Block Download");
-    }
-
-    LOCK2(cs_main, pwallet->cs_wallet);
-
-    // Do not do anything to non-HD wallets
-    if (!pwallet->CanSupportFeature(FEATURE_PRE_SPLIT_KEYPOOL)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Cannot set a HD seed on a non-HD wallet. Start with -upgradewallet in order to upgrade a non-HD wallet to HD");
-    }
-
-    EnsureWalletIsUnlocked(pwallet);
-
-    bool flush_key_pool = true;
-    if (!params[0].isNull()) {
-        flush_key_pool = params[0].get_bool();
-    }
-
-    ScriptPubKeyMan* spk_man = pwallet->GetScriptPubKeyMan();
-    CPubKey master_pub_key = params[1].isNull() ?
-            spk_man->GenerateNewSeed() : parseWIFKey(params[1].get_str(), pwallet);
-
-    spk_man->SetHDSeed(master_pub_key, true);
-    if (flush_key_pool) spk_man->NewKeyPool();
-
-    return NullUniValue;
 }
 
 UniValue getnewaddress(const UniValue& params, bool fHelp)
@@ -564,7 +440,7 @@ CBitcoinAddress GetAccountAddress(std::string strAccount, bool bForceNew = false
 
     // Generate a new key
     if (!account.vchPubKey.IsValid() || bForceNew || bKeyUsed) {
-        if (!pwalletMain->GetKeyFromPool(account.vchPubKey))
+        if (!pwalletMain->GetKeyFromPool(account.vchPubKey, false))
             throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
         pwalletMain->SetAddressBook(account.vchPubKey.GetID(), strAccount, AddressBook::AddressBookPurpose::RECEIVE);
@@ -2538,7 +2414,7 @@ UniValue keypoolrefill(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
     pwalletMain->TopUpKeyPool(kpSize);
 
-    if (pwalletMain->GetKeyPoolSize() < kpSize)
+    if (pwalletMain->GetKeyPoolSize() < (pwalletMain->IsHDEnabled() ? kpSize * 2 : kpSize))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
 
     return NullUniValue;
@@ -2758,7 +2634,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys. So:
     StartShutdown();
-    return "wallet encrypted; pivx server stopping, restart to run with encrypted wallet. The keypool has been flushed, you need to make a new backup.";
+    return "wallet encrypted; pivx server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
 }
 
 UniValue lockunspent(const UniValue& params, bool fHelp)
@@ -2969,10 +2845,19 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
             "  \"immature_balance\": xxxxxx,              (numeric) the total immature balance of the wallet in PIV\n"
             "  \"txcount\": xxxxxxx,                      (numeric) the total number of transactions in the wallet\n"
             "  \"keypoololdest\": xxxxxx,                 (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
-            "  \"keypoolsize\": xxxx,               (numeric) how many new keys are pre-generated (only counts external keys)\n"
-            "  \"keypoolsize_hd_internal\": xxxx,   (numeric) how many new keys are pre-generated for internal use (used for change outputs, only appears if the wallet is using this feature, otherwise external keys are used)\n"
-            "  \"keypoolsize_hd_staking\": xxxx,    (numeric) how many new keys are pre-generated for staking use (used for staking contracts, only appears if the wallet is using this feature)\n"
+            "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated (only counts external keys)\n"
+            "  \"keypoolsize_hd_internal\": xxxx, (numeric) how many new keys are pre-generated for internal use (used for change outputs, only appears if the wallet is using this feature, otherwise external keys are used)\n"
             "  \"unlocked_until\": ttt,                   (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked\n"
+            "  \"hdchainid\": \"<hash>\",      (string) the ID of the HD chain\n"
+            "  \"hdaccountcount\": xxx,      (numeric) how many accounts of the HD chain are in this wallet\n"
+            "    [\n"
+            "      {\n"
+            "      \"hdaccountindex\": xxx,         (numeric) the index of the account\n"
+            "      \"hdexternalkeyindex\": xxxx,    (numeric) current external childkey index\n"
+            "      \"hdinternalkeyindex\": xxxx,    (numeric) current internal childkey index\n"
+            "      }\n"
+            "      ,...\n"
+            "    ]\n"
             "  \"paytxfee\": x.xxxx                       (numeric) the transaction fee configuration, set in PIV/kB\n"
             "  \"hdseedid\": \"<hash160>\"            (string, optional) the Hash160 of the HD seed (only present when HD is enabled)\n"
             "}\n"
@@ -2981,6 +2866,9 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
             HelpExampleCli("getwalletinfo", "") + HelpExampleRpc("getwalletinfo", ""));
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    CHDChain hdChainCurrent;
+    bool fHDEnabled = pwalletMain->GetHDChain(hdChainCurrent);
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
@@ -2993,24 +2881,31 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("immature_cold_staking_balance",    ValueFromAmount(pwalletMain->GetImmatureColdStakingBalance())));
     obj.push_back(Pair("txcount", (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
-
-    size_t kpExternalSize = pwalletMain->KeypoolCountExternalKeys();
-    obj.pushKV("keypoolsize", (int64_t)kpExternalSize);
-
-    ScriptPubKeyMan* spk_man = pwalletMain->GetScriptPubKeyMan();
-    if (spk_man) {
-        const CKeyID& seed_id = spk_man->GetHDChain().GetID();
-        if (!seed_id.IsNull()) {
-            obj.pushKV("hdseedid", seed_id.GetHex());
-        }
+    obj.push_back(Pair("keypoolsize",   (int64_t)pwalletMain->KeypoolCountExternalKeys()));
+    if (fHDEnabled) {
+        obj.push_back(Pair("keypoolsize_hd_internal",   (int64_t)(pwalletMain->KeypoolCountInternalKeys())));
     }
-    if (pwalletMain->IsHDEnabled()) {
-        obj.pushKV("keypoolsize_hd_internal",   (int64_t)(pwalletMain->GetKeyPoolSize() - kpExternalSize));
-        obj.pushKV("keypoolsize_hd_staking",   (int64_t)(pwalletMain->GetStakingKeyPoolSize()));
-    }
-
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
+    if (fHDEnabled) {
+        obj.push_back(Pair("hdchainid", hdChainCurrent.GetID().GetHex()));
+        obj.push_back(Pair("hdaccountcount", (int64_t)hdChainCurrent.CountAccounts()));
+        UniValue accounts(UniValue::VARR);
+        for (size_t i = 0; i < hdChainCurrent.CountAccounts(); ++i)
+        {
+            CHDAccount acc;
+            UniValue account(UniValue::VOBJ);
+            account.push_back(Pair("hdaccountindex", (int64_t)i));
+            if(hdChainCurrent.GetAccount(i, acc)) {
+                account.push_back(Pair("hdexternalkeyindex", (int64_t)acc.nExternalChainCounter));
+                account.push_back(Pair("hdinternalkeyindex", (int64_t)acc.nInternalChainCounter));
+            } else {
+                account.push_back(Pair("error", strprintf("account %d is missing", i)));
+            }
+            accounts.push_back(account);
+        }
+        obj.push_back(Pair("hdaccounts", accounts));
+    }
     obj.push_back(Pair("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK())));
     return obj;
 }
@@ -3352,6 +3247,113 @@ UniValue multisend(const UniValue& params, bool fHelp)
         }
     }
     return printMultiSend();
+}
+
+
+UniValue upgradetohd(const UniValue& params, bool fHelp)
+{
+
+    if (fHelp || params.size() == 0) {
+        throw std::runtime_error(
+                "upgradetohd ( \"mnemonicwords\" \"password\" )\n"
+                "\nNon-HD wallets will not be upgraded to being a HD wallet. Wallets that are already\n"
+                "\nNote that you will need to MAKE A NEW BACKUP of your wallet after setting the HD wallet mnemonic.\n"
+                "\nArguments:\n"
+                "1. \"words\"               (string, optional) The WIF private key to use as the new HD seed; if not provided a random seed will be used.\n"
+                "                             The mnemonic value can be retrieved using the dumpwallet command. It is the private key marked hdmaster=1\n"
+                "2. \"password\"               (boolean, optional) If your wallet is encrypted you must have your password here\n"
+
+                "\nExamples:\n"
+                + HelpExampleCli("upgradetohd", "")
+                + HelpExampleCli("upgradetohd", "\"mnemonicwords\"")
+                + HelpExampleCli("upgradetohd", "\"mnemonicwords\" \"password\""));
+    }
+
+    if (IsInitialBlockDownload()) {
+        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Cannot set a new HD seed while still in Initial Block Download");
+    }
+
+    if (params.size() == 1 && pwalletMain->IsLocked()) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Cannot upgrade a encrypted wallet to hd without the password");
+    }
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    // Do not do anything to HD wallets
+    if (pwalletMain->IsHDEnabled()) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Cannot upgrade a wallet to hd if It is already upgraded to hd.");
+    }
+
+    EnsureWalletIsUnlocked(pwalletMain);
+
+    std::string words = params[0].get_str();
+
+    int prev_version = pwalletMain->GetVersion();
+
+    int nMaxVersion = GetArg("-upgradewallet", 0);
+    if (nMaxVersion == 0) // the -upgradewallet without argument case
+    {
+        LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
+        nMaxVersion = CLIENT_VERSION;
+        pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
+    } else
+        LogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
+    if (nMaxVersion < pwalletMain->GetVersion()) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Cannot downgrade wallet");
+    }
+
+    pwalletMain->SetMaxVersion(nMaxVersion);
+
+    // Do not upgrade versions to any version between HD_SPLIT and FEATURE_PRE_SPLIT_KEYPOOL unless already supporting HD_SPLIT
+    int max_version = pwalletMain->GetVersion();
+    if (!pwalletMain->CanSupportFeature(FEATURE_HD) && max_version >=FEATURE_HD && max_version < FEATURE_PRE_SPLIT_KEYPOOL) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Cannot upgrade a non HD split wallet without upgrading to support pre split keypool. Please use -upgradewallet=169900 or -upgradewallet with no version specified.");
+    }
+
+    bool hd_upgrade = false;
+    bool split_upgrade = false;
+    if (pwalletMain->CanSupportFeature(FEATURE_HD) && !pwalletMain->IsHDEnabled()) {
+        LogPrintf("Upgrading wallet to HD\n");
+        pwalletMain->SetMinVersion(FEATURE_HD);
+
+        // generate a new master key
+        SecureString strWalletPass;
+        strWalletPass.reserve(100);
+
+        // TODO: get rid of this .c_str() by implementing SecureString::operator=(std::string)
+        // Alternately, find a way to make params[0] mlock()'d to begin with.
+        if (params.size() < 2){
+            strWalletPass = std::string().c_str();
+        } else {
+            strWalletPass = params[1].get_str().c_str();
+        }
+
+        pwalletMain->GenerateNewHDChain(words, strWalletPass);
+
+        hd_upgrade = true;
+    }
+
+    // Upgrade to HD chain split if necessary
+    if (pwalletMain->CanSupportFeature(FEATURE_HD)) {
+        LogPrintf("Upgrading wallet to use HD chain split\n");
+        pwalletMain->SetMinVersion(FEATURE_PRE_SPLIT_KEYPOOL);
+        split_upgrade = FEATURE_HD > prev_version;
+    }
+
+    // Mark all keys currently in the keypool as pre-split
+    if (split_upgrade) {
+        pwalletMain->MarkPreSplitKeys();
+    }
+    // Regenerate the keypool if upgraded to HD
+    if (hd_upgrade) {
+        if (!pwalletMain->TopUpKeyPool()) {
+            throw JSONRPCError(RPC_WALLET_ERROR, "Unable to generate keys\n");
+        }
+    }
+
+    pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+
+    return NullUniValue;
 }
 
 UniValue getzerocoinbalance(const UniValue& params, bool fHelp)

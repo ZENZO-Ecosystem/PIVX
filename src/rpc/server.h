@@ -197,6 +197,7 @@ extern UniValue clearbanned(const UniValue& params, bool fHelp);
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
 extern UniValue importprivkey(const UniValue& params, bool fHelp);
 extern UniValue importaddress(const UniValue& params, bool fHelp);
+extern UniValue dumphdinfo(const UniValue& params, bool fHelp);
 extern UniValue dumpwallet(const UniValue& params, bool fHelp);
 extern UniValue importwallet(const UniValue& params, bool fHelp);
 extern UniValue bip38encrypt(const UniValue& params, bool fHelp);
@@ -218,8 +219,6 @@ extern UniValue delegatestake(const UniValue& params, bool fHelp); // in rpcwall
 extern UniValue rawdelegatestake(const UniValue& params, bool fHelp);
 extern UniValue delegatoradd(const UniValue& params, bool fHelp);
 extern UniValue delegatorremove(const UniValue& params, bool fHelp);
-extern UniValue upgradewallet(const UniValue& params, bool fHelp);
-extern UniValue sethdseed(const UniValue& params, bool fHelp);
 extern UniValue getaddressinfo(const UniValue& params, bool fHelp);
 extern UniValue getnewaddress(const UniValue& params, bool fHelp);
 extern UniValue getnewstakingaddress(const UniValue& params, bool fHelp);
@@ -253,6 +252,7 @@ extern UniValue listsinceblock(const UniValue& params, bool fHelp);
 extern UniValue gettransaction(const UniValue& params, bool fHelp);
 extern UniValue abandontransaction(const UniValue& params, bool fHelp);
 extern UniValue backupwallet(const UniValue& params, bool fHelp);
+extern UniValue upgradetohd(const UniValue& params, bool fHelp);
 extern UniValue keypoolrefill(const UniValue& params, bool fHelp);
 extern UniValue walletpassphrase(const UniValue& params, bool fHelp);
 extern UniValue walletpassphrasechange(const UniValue& params, bool fHelp);

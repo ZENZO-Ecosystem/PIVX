@@ -83,6 +83,9 @@ TopBar::TopBar(PIVXGUI* _mainWindow, QWidget *parent) :
     ui->pushButtonSync->setButtonClassStyle("cssClass", "btn-check-sync");
     ui->pushButtonSync->setButtonText(" %54 Synchronizing..");
 
+    ui->pushButtonHDEnabled->setButtonClassStyle("cssClass", "btn-check-hd-inactive");
+    ui->pushButtonHDEnabled->setButtonText("HD is Disabled");
+
     ui->pushButtonLock->setButtonClassStyle("cssClass", "btn-check-lock");
 
     if(isLightTheme()){
@@ -115,8 +118,11 @@ TopBar::TopBar(PIVXGUI* _mainWindow, QWidget *parent) :
     connect(ui->pushButtonTheme, SIGNAL(Mouse_Pressed()), this, SLOT(onThemeClicked()));
     connect(ui->pushButtonFAQ, SIGNAL(Mouse_Pressed()), _mainWindow, SLOT(openFAQ()));
     connect(ui->pushButtonColdStaking, SIGNAL(Mouse_Pressed()), this, SLOT(onColdStakingClicked()));
+    connect(ui->pushButtonHDEnabled, SIGNAL(Mouse_Pressed()), this, SLOT(onHDEnabledClicked()));
     connect(ui->pushButtonSync, &ExpandableButton::Mouse_HoverLeave, this, &TopBar::refreshProgressBarSize);
     connect(ui->pushButtonSync, &ExpandableButton::Mouse_Hover, this, &TopBar::refreshProgressBarSize);
+
+    updateHDStatus();
 }
 
 void TopBar::onThemeClicked(){
@@ -302,35 +308,42 @@ void TopBar::showBottom(){
 
 void TopBar::onColdStakingClicked() {
 
-    bool isColdStakingEnabled = walletModel->isColdStaking();
-    ui->pushButtonColdStaking->setChecked(isColdStakingEnabled);
+    if (!walletModel->hdEnabled()) {
+        bool isColdStakingEnabled = walletModel->isColdStaking();
+        ui->pushButtonColdStaking->setChecked(isColdStakingEnabled);
 
-    bool show = (isInitializing) ? walletModel->getOptionsModel()->isColdStakingScreenEnabled() :
-            walletModel->getOptionsModel()->invertColdStakingScreenStatus();
-    QString className;
-    QString text;
+        bool show = (isInitializing) ? walletModel->getOptionsModel()->isColdStakingScreenEnabled() :
+                    walletModel->getOptionsModel()->invertColdStakingScreenStatus();
+        QString className;
+        QString text;
 
-    if (isColdStakingEnabled) {
-        text = "Cold Staking Active";
-        className = (show) ? "btn-check-cold-staking-checked" : "btn-check-cold-staking-unchecked";
-    } else if (show) {
-        className = "btn-check-cold-staking";
-        text = "Cold Staking Enabled";
+        if (isColdStakingEnabled) {
+            text = "Cold Staking Active";
+            className = (show) ? "btn-check-cold-staking-checked" : "btn-check-cold-staking-unchecked";
+        } else if (show) {
+            className = "btn-check-cold-staking";
+            text = "Cold Staking Enabled";
+        } else {
+            className = "btn-check-cold-staking-inactive";
+            text = "Cold Staking Disabled";
+        }
+
+        ui->pushButtonColdStaking->setButtonClassStyle("cssClass", className, true);
+        ui->pushButtonColdStaking->setButtonText(text);
+        updateStyle(ui->pushButtonColdStaking);
+
+        Q_EMIT onShowHideColdStakingChanged(show);
     } else {
-        className = "btn-check-cold-staking-inactive";
-        text = "Cold Staking Disabled";
+        inform(tr("Can't use cold staking with HD till supported"));
     }
-
-    ui->pushButtonColdStaking->setButtonClassStyle("cssClass", className, true);
-    ui->pushButtonColdStaking->setButtonText(text);
-    updateStyle(ui->pushButtonColdStaking);
-
-    Q_EMIT onShowHideColdStakingChanged(show);
 }
 
 TopBar::~TopBar(){
     if(timerStakingIcon){
         timerStakingIcon->stop();
+    }
+    if(timerHDIcon){
+        timerHDIcon->stop();
     }
     delete ui;
 }
@@ -348,6 +361,11 @@ void TopBar::loadClientModel(){
         connect(timerStakingIcon, SIGNAL(timeout()), this, SLOT(updateStakingStatus()));
         timerStakingIcon->start(50000);
         updateStakingStatus();
+
+        timerHDIcon = new QTimer(ui->pushButtonHDEnabled);
+        connect(timerHDIcon, SIGNAL(timeout()), this, SLOT(updateHDStatus()));
+        timerHDIcon->start(10);
+        updateHDStatus();
     }
 }
 
@@ -361,6 +379,7 @@ void TopBar::setStakingStatusActive(bool fActive)
                                                                 "btn-check-stack-inactive"), true);
     }
 }
+
 void TopBar::updateStakingStatus(){
     setStakingStatusActive(walletModel &&
                            !walletModel->isWalletLocked() &&
@@ -368,6 +387,25 @@ void TopBar::updateStakingStatus(){
 
     // Taking advantage of this timer to update Tor status if needed.
     updateTorIcon();
+}
+
+void TopBar::setHDStatus(bool fActive)
+{
+    if (ui->pushButtonHDEnabled->isChecked() != fActive) {
+        ui->pushButtonHDEnabled->setButtonText(fActive ? tr("HD active") : tr("HD not active"));
+        ui->pushButtonHDEnabled->setChecked(fActive);
+        ui->pushButtonHDEnabled->setButtonClassStyle("cssClass", (fActive ?
+                                                              "btn-check-hd" :
+                                                              "btn-check-hd-inactive"), true);
+    }
+}
+
+void TopBar::updateHDStatus(){
+    setHDStatus(walletModel && walletModel->hdEnabled());
+
+    if (walletModel && walletModel->hdEnabled()) {
+        timerHDIcon->stop();
+    }
 }
 
 void TopBar::setNumConnections(int count) {

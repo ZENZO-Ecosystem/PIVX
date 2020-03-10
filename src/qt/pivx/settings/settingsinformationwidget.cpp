@@ -5,6 +5,7 @@
 #include "qt/pivx/settings/settingsinformationwidget.h"
 #include "qt/pivx/settings/forms/ui_settingsinformationwidget.h"
 #include "clientmodel.h"
+#include "walletmodel.h"
 #include "chainparams.h"
 #include "db.h"
 #include "util.h"
@@ -157,6 +158,7 @@ void SettingsInformationWidget::openNetworkMonitor(){
     if(!rpcConsole){
         rpcConsole = new RPCConsole(0);
         rpcConsole->setClientModel(clientModel);
+        rpcConsole->setWalletModel(walletModel);
     }
     rpcConsole->showNetwork();
 }

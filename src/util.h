@@ -31,6 +31,16 @@
 #include <boost/thread/exceptions.hpp>
 #include <boost/thread/condition_variable.hpp> // for boost::thread_interrupted
 
+// Debugging macros
+// Uncomment the following line to enable debugging messages
+// or enable on a per file basis prior to inclusion of util.h
+//#define ENABLE_ZENZO_DEBUG
+#ifdef ENABLE_ZENZO_DEBUG
+#define DBG( x ) x
+#else
+#define DBG( x )
+#endif
+
 //PIVX only features
 
 extern bool fMasterNode;
@@ -127,6 +137,7 @@ void AllocateFileRange(FILE* file, unsigned int offset, unsigned int length);
 bool RenameOver(boost::filesystem::path src, boost::filesystem::path dest);
 bool TryCreateDirectory(const boost::filesystem::path& p);
 boost::filesystem::path GetDefaultDataDir();
+bool CheckIfWalletDatExists(bool fNetSpecific = true);
 const boost::filesystem::path &GetDataDir(bool fNetSpecific = true);
 void ClearDatadirCache();
 boost::filesystem::path GetConfigFile();

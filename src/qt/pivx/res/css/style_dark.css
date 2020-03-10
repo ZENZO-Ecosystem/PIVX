@@ -551,6 +551,32 @@ QPushButton[cssClass="btn-check-stack"]:checked {
     border-bottom:2px solid #b088ff;
 }
 
+QPushButton[cssClass="btn-check-hd"] {
+    qproperty-icon: url("://ic-check-hd");
+    qproperty-iconSize: 24px 24px;
+    color:#ffffff;
+    background-color:#505c4b7d;
+    border-bottom:2px solid #b088ff;
+    border-radius:2px;
+}
+
+
+QPushButton[cssClass="btn-check-hd-inactive"] {
+    qproperty-icon: url("://ic-check-hd-off");
+    qproperty-iconSize: 24px 24px;
+    color:#B3FFFFFF;
+    background-color:#405c4b7d;
+    border-bottom:2px solid #5C4B7D;
+    border-radius:2px;
+}
+
+
+QPushButton[cssClass="btn-check-hd"]:checked {
+    background-color:#505c4b7d;
+    color:#ffffff;
+    border-bottom:2px solid #b088ff;
+}
+
 QPushButton[cssClass="btn-check-connect"] {
     qproperty-icon: url("://ic-check-connect") ;
     qproperty-iconSize: 24px 24px;
@@ -3313,4 +3339,83 @@ QRadioButton[cssClass="radio-welcome"]::indicator:unchecked {
     background: url("://btn-radio-off");
     background-repeat:no-repeat;
     background-position:center;
+}
+
+
+/*Seed Words Generator*/
+
+*[cssClass="seed-word-generator"] {
+    background-color:#5c4b7d;
+}
+
+
+QListView[cssClass="seed-word-generator"] {
+    background-color: #5c4b7d;
+    border: 2px solid #5c4b7d;
+}
+
+QListView[cssClass="seed-word-generator"]::item {
+    color: #FFFFFF;
+    height: 36px;
+}
+
+QGraphicsView[cssClass="seed-word-generator"] {
+    background-color: #5c4b7d;
+    border: 2px solid #5c4b7d;
+    color: #FFFFFF;
+}
+
+QGraphicsScene[cssClass="seed-word-generator"] {
+    background-color: #5c4b7d;
+    color: #FFFFFF;
+}
+
+QRadioButton[cssClass="seed-word-generator"] {
+    height: 40px;
+    text-align: center;
+    font-size: 20px;
+    padding: 20px;
+    border-radius: 8px;
+}
+QRadioButton[cssClass="seed-word-generator"]:focus {
+    background-color: #5c4b7d;
+}
+QRadioButton[cssClass="seed-word-generator"]::indicator {
+    display: none;
+    opacity: 0;
+    width: 0px;
+    height: 0px;
+}
+QRadioButton[cssClass="seed-word-generator"]:checked {
+    background-color: transparent;
+    border: 2px solid #33ffffff;
+}
+QRadioButton[cssClass="seed-word-generator"]:unchecked {
+    background-color: transparent;
+    border-width: 2px;
+    border-color:  #777;
+}
+QRadioButton[cssClass="seed-word-generator"]::unchecked: hover {
+    background-color:  #5c4b7d;
+}
+
+QListWidget[cssClass="seed-word-generator"] {
+    border-color: #5c4b7d;
+}
+QListWidget[cssClass="seed-word-generator"]::item {
+    border-radius: 8px;
+    border: none;
+    color: #FFFFFF;
+}
+QListWidget[cssClass="seed-word-generator"]::item:selected {
+    border: 2px solid #33ffffff;
+    border-radius: 8px;
+    padding-left: 4px;
+    background: transparent;
+}
+QListWidget[cssClass="seed-word-generator"]::item:focus {
+    border: 1px solid #5c4b7d;
+    background:  #5c4b7d; ;
+    border-radius: 8px;
+    padding-left: 4px;
 }

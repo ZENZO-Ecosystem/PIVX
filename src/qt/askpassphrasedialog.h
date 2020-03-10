@@ -57,6 +57,7 @@ public:
 
     void showEvent(QShowEvent *event) override;
     void accept() override;
+    SecureString getPassword() { return oldpass; }
 
 private:
     Ui::AskPassphraseDialog* ui;
@@ -65,6 +66,7 @@ private:
     Context context;
     bool fCapsLock;
     SecureString newpassCache = "";
+    SecureString oldpass, newpass1, newpass2;
 
     void run(int type) override;
     void onError(QString error, int type) override;

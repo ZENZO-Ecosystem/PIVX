@@ -6,7 +6,6 @@
 
 #include "bip38.h"
 #include "init.h"
-#include "key_io.h"
 #include "main.h"
 #include "rpc/server.h"
 #include "script/script.h"
@@ -72,11 +71,6 @@ std::string DecodeDumpString(const std::string& str)
         ret << c;
     }
     return ret.str();
-}
-
-bool IsStakingDerPath(KeyOriginInfo keyOrigin)
-{
-    return keyOrigin.path.size() > 3 && keyOrigin.path[3] == (2 | BIP32_HARDENED_KEY_LIMIT);
 }
 
 UniValue importprivkey(const UniValue& params, bool fHelp)
@@ -155,6 +149,50 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
 
     return NullUniValue;
 }
+
+UniValue dumphdinfo(const UniValue& params, bool fHelp)
+{
+    if (pwalletMain == NULL)
+        return false;
+
+    if (fHelp || params.size() != 0)
+        throw std::runtime_error(
+                "dumphdinfo\n"
+                "Returns an object containing sensitive private info about this HD wallet.\n"
+                "\nResult:\n"
+                "{\n"
+                "  \"hdseed\": \"seed\",                    (string) The HD seed (bip32, in hex)\n"
+                "  \"mnemonic\": \"words\",                 (string) The mnemonic for this HD wallet (bip39, english words) \n"
+                "  \"mnemonicpassphrase\": \"passphrase\",  (string) The mnemonic passphrase for this HD wallet (bip39)\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("dumphdinfo", "")
+                + HelpExampleRpc("dumphdinfo", "")
+        );
+
+    LOCK(pwalletMain->cs_wallet);
+
+    EnsureWalletIsUnlocked();
+
+    CHDChain hdChainCurrent;
+    if (!pwalletMain->GetHDChain(hdChainCurrent))
+        throw JSONRPCError(RPC_WALLET_ERROR, "This wallet is not a HD wallet.");
+
+    if (!pwalletMain->GetDecryptedHDChain(hdChainCurrent))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot decrypt HD seed");
+
+    SecureString ssMnemonic;
+    SecureString ssMnemonicPassphrase;
+    hdChainCurrent.GetMnemonic(ssMnemonic, ssMnemonicPassphrase);
+
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("hdseed", HexStr(hdChainCurrent.GetSeed())));
+    obj.push_back(Pair("mnemonic", ssMnemonic.c_str()));
+    obj.push_back(Pair("mnemonicpassphrase", ssMnemonicPassphrase.c_str()));
+
+    return obj;
+}
+
 
 UniValue importaddress(const UniValue& params, bool fHelp)
 {
@@ -391,19 +429,8 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
-    ScriptPubKeyMan* spk_man = pwalletMain->GetScriptPubKeyMan();
-
     boost::filesystem::path filepath = params[0].get_str().c_str();
     filepath = boost::filesystem::absolute(filepath);
-
-    /* Prevent arbitrary files from being overwritten. There have been reports
-     * that users have overwritten wallet files this way:
-     * https://github.com/bitcoin/bitcoin/issues/9934
-     * It may also avoid other security issues.
-     */
-    if (boost::filesystem::exists(filepath)) {
-        throw JSONRPCError(RPC_INVALID_PARAMETER, filepath.string() + " already exists. If you are sure this is what you want, move it out of the way first");
-    }
 
     std::ofstream file;
     file.open(params[0].get_str().c_str());
@@ -411,9 +438,9 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
 
     std::map<CKeyID, int64_t> mapKeyBirth;
+    std::set<CKeyID> setKeyPool;
     pwalletMain->GetKeyBirthTimes(mapKeyBirth);
-    const std::map<CKeyID, int64_t>& mapKeyPool = spk_man->GetAllReserveKeys();
-
+    pwalletMain->GetAllReserveKeys(setKeyPool);
 
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
@@ -435,42 +462,55 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
         file << "# Missing tip information\n";
     }
     file << "\n";
-
-    // Add the base58check encoded extended master if the wallet uses HD
-    CKeyID seed_id = spk_man->GetHDChain().GetID();
-    if (!seed_id.IsNull())
+    // add the base58check encoded extended master if the wallet uses HD
+    CHDChain hdChainCurrent;
+    if (pwalletMain->GetHDChain(hdChainCurrent))
     {
-        CKey seed;
-        if (pwalletMain->GetKey(seed_id, seed)) {
-            CExtKey masterKey;
-            masterKey.SetSeed(seed.begin(), seed.size());
+        if (!pwalletMain->GetDecryptedHDChain(hdChainCurrent))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot decrypt HD chain");
 
-            file << "# extended private masterkey: " << KeyIO::EncodeExtKey(masterKey) << "\n\n";
+        SecureString ssMnemonic;
+        SecureString ssMnemonicPassphrase;
+        hdChainCurrent.GetMnemonic(ssMnemonic, ssMnemonicPassphrase);
+        file << "# mnemonic: " << ssMnemonic << "\n";
+        file << "# mnemonic passphrase: " << ssMnemonicPassphrase << "\n\n";
+        SecureVector vchSeed = hdChainCurrent.GetSeed();
+        file << "# HD seed: " << HexStr(vchSeed) << "\n\n";
+        CExtKey masterKey;
+        masterKey.SetMaster(&vchSeed[0], vchSeed.size());
+        CBitcoinExtKey b58extkey;
+        b58extkey.SetKey(masterKey);
+        file << "# extended private masterkey: " << b58extkey.ToString() << "\n";
+        CExtPubKey masterPubkey;
+        masterPubkey = masterKey.Neuter();
+        CBitcoinExtPubKey b58extpubkey;
+        b58extpubkey.SetKey(masterPubkey);
+        file << "# extended public masterkey: " << b58extpubkey.ToString() << "\n\n";
+        for (size_t i = 0; i < hdChainCurrent.CountAccounts(); ++i)
+        {
+            CHDAccount acc;
+            if(hdChainCurrent.GetAccount(i, acc)) {
+                file << "# external chain counter: " << acc.nExternalChainCounter << "\n";
+                file << "# internal chain counter: " << acc.nInternalChainCounter << "\n\n";
+            } else {
+                file << "# WARNING: ACCOUNT " << i << " IS MISSING!" << "\n\n";
+            }
         }
     }
-
     for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
         const CKeyID& keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
+        std::string strAddr = CBitcoinAddress(keyid).ToString();
         CKey key;
         if (pwalletMain->GetKey(keyid, key)) {
-            const CKeyMetadata& metadata = pwalletMain->mapKeyMetadata[keyid];
-            std::string strAddr = CBitcoinAddress(keyid, (metadata.HasKeyOrigin() && IsStakingDerPath(metadata.key_origin) ?
-                                                          CChainParams::STAKING_ADDRESS :
-                                                          CChainParams::PUBKEY_ADDRESS)).ToString();
-
-            file << strprintf("%s %s ", KeyIO::EncodeSecret(key), strTime);
+            file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
             if (pwalletMain->mapAddressBook.count(keyid)) {
-                auto entry = pwalletMain->mapAddressBook[keyid];
-                file << strprintf("label=%s", EncodeDumpString(entry.name));
-            } else if (keyid == seed_id) {
-                file << "hdseed=1";
-            } else if (mapKeyPool.count(keyid)) {
+                file << strprintf("label=%s", EncodeDumpString(pwalletMain->mapAddressBook[keyid].name));
+            } else if (setKeyPool.count(keyid)) {
                 file << "reserve=1";
             } else {
-                file << "change=1";
+                file << strprintf(" # addr=%s%s\n", strAddr, (pwalletMain->mapHdPubKeys.count(keyid) ? " hdkeypath="+pwalletMain->mapHdPubKeys[keyid].GetKeyPath() : ""));
             }
-            file << strprintf(" # addr=%s%s\n", strAddr, (metadata.HasKeyOrigin() ? " hdkeypath="+metadata.key_origin.pathToString() : ""));
         }
     }
     file << "\n";
