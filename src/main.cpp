@@ -3581,7 +3581,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
             return state.DoS(50, error("CheckBlockHeader() : block version must be above 4 after ZerocoinStartHeight"),
             REJECT_INVALID, "block-version");
     } else {
-        if (block.nVersion >= Params().Zerocoin_HeaderVersion() && block.GetBlockTime() > 1578848274 )
+        if (block.nVersion >= 4 && block.GetBlockTime() > 1578848274 )
             return state.DoS(50, error("CheckBlockHeader() : block version must be below 4 before ZerocoinStartHeight"),
             REJECT_INVALID, "block-version");
     }
@@ -3832,8 +3832,8 @@ bool CheckWork(const CBlock block, CBlockIndex* const pindexPrev)
             // accept PIVX block minted with incorrect proof of work threshold
             return true;
         }
-
-        return error("%s : incorrect proof of work at %d", __func__, pindexPrev->nHeight + 1);
+        if (pindexPrev->nHeight + 1 != Params().GetConsensus().height_last_PoW + 1)
+            return error("%s : incorrect proof of work at %d", __func__, pindexPrev->nHeight + 1);
     }
 
     return true;
@@ -3944,7 +3944,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     // Enforce block.nVersion=2 rule that the coinbase starts with serialized block height
     if (pindexPrev) { // pindexPrev is only null on the first block which is a version 1 block.
         CScript expect = CScript() << nHeight;
-        bool isAfterRHF = Params().IsPastRHFBlock(nHeight);
+        bool isAfterRHF = Params().GetConsensus().IsPastRHFBlock(nHeight);
         if(isAfterRHF)
             if (block.vtx[0].vin[0].scriptSig.size() < expect.size() ||
                 !std::equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin()))
@@ -4051,7 +4051,7 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, 
         return false;
 
     bool isPoS = block.IsProofOfStake();
-    if (isPoS) {
+    if (isPoS && pindexPrev->nHeight > 50000) {
         uint256 hashProofOfStake = 0;
         std::unique_ptr<CStakeInput> stake;
         if (!CheckProofOfStake(block, hashProofOfStake, stake, pindexPrev->nHeight))

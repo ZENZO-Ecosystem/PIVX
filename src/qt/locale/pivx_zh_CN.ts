@@ -6451,7 +6451,7 @@ PIVX核心钱包</translation>
     </message>
     <message>
         <source>(26210 could be used only on mainnet)</source>
-        <translation>(51472只可在网上使用)</translation>
+        <translation>(26210只可在网上使用)</translation>
     </message>
     <message>
         <source>(default: %s)</source>
@@ -6463,7 +6463,7 @@ PIVX核心钱包</translation>
     </message>
     <message>
         <source>(must be 26210 for mainnet)</source>
-        <translation>(主网必须为51472)</translation>
+        <translation>(主网必须为26210)</translation>
     </message>
     <message>
         <source>Accept command line and JSON-RPC commands</source>

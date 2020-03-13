@@ -434,16 +434,11 @@ const boost::filesystem::path& GetDataDir(bool fNetSpecific)
     LOCK(csPathCached);
 
     fs::path& path = fNetSpecific ? pathCachedNetSpecific : pathCached;
+    
+    if (!path.empty())
+        return path;
 
-    // ZENZO NOTICE:
-    // Disabled -datadir and cache temporarily as datadir path cache can interfere with PIVX Core files on the same system
-
-    // This can be called during exceptions by LogPrintf(), so we cache the
-    // value so we don't have to do memory allocations after that.
-    /*if (!path.empty())
-        return path;*/
-
-    /*if (mapArgs.count("-datadir")) {
+    if (mapArgs.count("-datadir")) {
         path = fs::system_complete(mapArgs["-datadir"]);
         if (!fs::is_directory(path)) {
             path = "";
@@ -451,7 +446,7 @@ const boost::filesystem::path& GetDataDir(bool fNetSpecific)
         }
     } else {
         path = GetDefaultDataDir();
-    }*/
+    }
 
     // Temp
     path = GetDefaultDataDir();
