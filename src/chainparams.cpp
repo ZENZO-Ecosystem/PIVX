@@ -181,7 +181,7 @@ public:
         consensus.height_start_BIP65 = consensus.height_RHF;             // 82629b7a9978f5c7ea3f70a12db92633a7d2e436711500db28b97efd48b1e527
         consensus.height_start_InvalidUTXOsCheck = 902850;
         consensus.height_start_MessSignaturesV2 = 2153200;  // TimeProtocolV2, Blocks V7 and newMessageSignatures
-        consensus.height_start_StakeModifierNewSelection = consensus.height_RHF;
+        consensus.height_start_StakeModifierNewSelection = 1;
         consensus.height_start_StakeModifierV2 = consensus.height_RHF;
         consensus.height_start_TimeProtoV2 = consensus.height_RHF;       // TimeProtocolV2, Blocks V7 and newMessageSignatures
         consensus.height_start_ZC = 101;
@@ -214,11 +214,12 @@ public:
         nDefaultPort = 26210;
 
         // Note that of those with the service bits flag, most only support a subset of possible options
-        vSeeds.push_back(CDNSSeedData("80.240.31.194", "80.240.31.194")); // Primary DNS Seeder
-        vSeeds.push_back(CDNSSeedData("149.28.55.190", "149.28.55.190")); // Secondary DNS Seeder
-        vSeeds.push_back(CDNSSeedData("45.77.224.165", "45.77.224.165")); // Backup DNS Seeder
-        vSeeds.push_back(CDNSSeedData("45.76.117.67", "45.76.117.67")); // Backup Secondary DNS Seeder
-        vSeeds.push_back(CDNSSeedData("45.76.184.133", "45.76.184.133")); // Backup DNS Seeder
+        // vSeeds.push_back(CDNSSeedData("80.240.31.194", "80.240.31.194")); // Primary DNS Seeder
+        // vSeeds.push_back(CDNSSeedData("149.28.55.190", "149.28.55.190")); // Secondary DNS Seeder
+        // vSeeds.push_back(CDNSSeedData("45.77.224.165", "45.77.224.165")); // Backup DNS Seeder
+        // vSeeds.push_back(CDNSSeedData("45.76.117.67", "45.76.117.67")); // Backup Secondary DNS Seeder
+        // vSeeds.push_back(CDNSSeedData("45.76.184.133", "45.76.184.133")); // Backup DNS Seeder
+        
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 81);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 53);
