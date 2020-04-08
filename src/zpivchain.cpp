@@ -3,15 +3,19 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "zpivchain.h"
-#include "zpiv/zpivmodule.h"
+
+#include "guiinterface.h"
 #include "main.h"
 #include "txdb.h"
-#include "guiinterface.h"
+#include "wallet/wallet.h"
+#include "zpiv/zpivmodule.h"
 
 // 6 comes from OPCODE (1) + vch.size() (1) + BIGNUM size (4)
 #define SCRIPT_OFFSET 6
 // For Script size (BIGNUM/Uint256 size)
 #define BIGNUM_SIZE   4
+
+std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
 
 bool BlockToMintValueVector(const CBlock& block, const libzerocoin::CoinDenomination denom, std::vector<CBigNum>& vValues)
 {
@@ -221,6 +225,12 @@ std::string ReindexZerocoinDB()
 
     uiInterface.ShowProgress(_("Reindexing zerocoin database..."), 0);
 
+    // initialize supply to 0
+    mapZerocoinSupply.clear();
+    for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
+
+    const Consensus::Params& consensus = Params().GetConsensus();
+
     const int zc_start_height = GetZerocoinStartHeight();
     CBlockIndex* pindex = chainActive[zc_start_height];
     std::vector<std::pair<libzerocoin::CoinSpend, uint256> > vSpendInfo;
@@ -235,6 +245,8 @@ std::string ReindexZerocoinDB()
         if (!ReadBlockFromDisk(block, pindex)) {
             return _("Reindexing zerocoin failed");
         }
+        // update supply
+        UpdateZPIVSupplyConnect(block, pindex, true);
 
         for (const CTransaction& tx : block.vtx) {
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
@@ -250,7 +262,7 @@ std::string ReindexZerocoinDB()
                             if (!in.IsZerocoinSpend() && !isPublicSpend)
                                 continue;
                             if (isPublicSpend) {
-                                libzerocoin::ZerocoinParams* params = Params().GetConsensus().Zerocoin_Params(false);
+                                libzerocoin::ZerocoinParams* params = consensus.Zerocoin_Params(false);
                                 PublicCoinSpend publicSpend(params);
                                 CValidationState state;
                                 if (!ZPIVModule::ParseZerocoinPublicSpend(in, tx, state, publicSpend)){
@@ -271,7 +283,7 @@ std::string ReindexZerocoinDB()
                                 continue;
 
                             CValidationState state;
-                            libzerocoin::PublicCoin coin(Params().GetConsensus().Zerocoin_Params(pindex->nHeight < Params().GetConsensus().height_start_ZC_SerialsV2));
+                            libzerocoin::PublicCoin coin(consensus.Zerocoin_Params(pindex->nHeight < consensus.height_start_ZC_SerialsV2));
                             TxOutToPublicCoin(out, coin, state);
                             vMintInfo.push_back(std::make_pair(coin, txid));
                         }
@@ -351,3 +363,96 @@ std::list<libzerocoin::CoinDenomination> ZerocoinSpendListFromBlock(const CBlock
     return vSpends;
 }
 
+int64_t GetZerocoinSupply()
+{
+    if (mapZerocoinSupply.empty())
+        return 0;
+
+    int64_t nTotal = 0;
+    for (auto& denom : libzerocoin::zerocoinDenomList) {
+        nTotal += libzerocoin::ZerocoinDenominationToAmount(denom) * mapZerocoinSupply.at(denom);
+    }
+    return nTotal;
+}
+
+bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
+{
+    const Consensus::Params& consensus = Params().GetConsensus();
+    if (pindex->nHeight < consensus.height_start_ZC)
+        return true;
+    
+    LogPrintf("  - Running UpdateZPIVSupplyConnect() on block %s \n", pindex->nHeight);
+
+    //Add mints to zZNZ supply (mints are forever disabled after last checkpoint)
+
+    // ZC-MAP-ERROR: It seems once hitting a zerocoin mint block (first mint at block 844),
+    // mapZerocoinSupply.at() is causing "EXCEPTION: St12out_of_range -- map::at"
+
+    /*
+        2020-04-08 14:44:13 Running ConnectBlock() on block 844 
+        2020-04-08 14:44:13   - Running transaction forloop in ConnectBlock() on block 844 
+        2020-04-08 14:44:13   - Running transaction forloop in ConnectBlock() on block 844 
+        2020-04-08 14:44:13   - Running transaction forloop in ConnectBlock() on block 844 
+        2020-04-08 14:44:14 TxOutToPublicCoin ZCPRINT denomination 1000 pubcoin 565740e360446c33acda4e943652e4b1384101be6546ef09ce04b9aec9ebd4e708d8b62845e558034429140047b858c18d0bbb3d8ff20ba258c4569304640db438d9ccfd9fddfd608116beed68b3fca9fceaa6d85df7aedd395d89ba375c575464075614896efffb643819515cd7100a72037c8c087f3ca9bf91ee4b3b945e1
+        2020-04-08 14:44:14   - Running UpdateZPIVSupplyConnect() on block 844 
+        2020-04-08 14:44:14 TxOutToPublicCoin ZCPRINT denomination 1000 pubcoin 565740e360446c33acda4e943652e4b1384101be6546ef09ce04b9aec9ebd4e708d8b62845e558034429140047b858c18d0bbb3d8ff20ba258c4569304640db438d9ccfd9fddfd608116beed68b3fca9fceaa6d85df7aedd395d89ba375c575464075614896efffb643819515cd7100a72037c8c087f3ca9bf91ee4b3b945e1
+        2020-04-08 14:44:14 
+
+        ************************
+        EXCEPTION: St12out_of_range       
+        map::at
+    */
+
+    if (pindex->nHeight < consensus.height_last_ZC_AccumCheckpoint) {
+        std::list<CZerocoinMint> listMints;
+        BlockToZerocoinMintList(block, listMints, true);
+        for (const CZerocoinMint& m : listMints) {
+            mapZerocoinSupply.at(m.GetDenomination())++;
+        }
+    }
+
+    LogPrintf("  - Added mints to zZNZ supply on block %s \n", pindex->nHeight);
+
+    //Remove spends from zZNZ supply
+    std::list<libzerocoin::CoinDenomination> listDenomsSpent = ZerocoinSpendListFromBlock(block, true);
+    for (const libzerocoin::CoinDenomination& denom : listDenomsSpent) {
+        mapZerocoinSupply.at(denom)--;
+    }
+
+    LogPrintf("  - Removed spends from zZNZ supply on block %s \n", pindex->nHeight);
+
+    for (const libzerocoin::CoinDenomination& denom : libzerocoin::zerocoinDenomList)
+        LogPrint("zero", "%s coins for denomination %d pubcoin %s\n", __func__, denom, mapZerocoinSupply.at(denom));
+
+    LogPrintf("  - Got past DenomList forloop in UpdateZPIVSupplyConnect() on block %s \n", pindex->nHeight);
+
+    return true;
+}
+
+bool UpdateZPIVSupplyDisconnect(const CBlock& block, CBlockIndex* pindex)
+{
+    const Consensus::Params& consensus = Params().GetConsensus();
+    if (pindex->nHeight < consensus.height_start_ZC)
+        return true;
+
+    // Re-add spends to zZNZ supply
+    std::list<libzerocoin::CoinDenomination> listDenomsSpent = ZerocoinSpendListFromBlock(block, true);
+    for (const libzerocoin::CoinDenomination& denom : listDenomsSpent) {
+        mapZerocoinSupply.at(denom)++;
+    }
+
+    // Remove mints from zZNZ supply (mints are forever disabled after last checkpoint)
+    if (pindex->nHeight < consensus.height_last_ZC_AccumCheckpoint) {
+        std::list<CZerocoinMint> listMints;
+        BlockToZerocoinMintList(block, listMints, true);
+        for (const CZerocoinMint& m : listMints) {
+            const libzerocoin::CoinDenomination denom = m.GetDenomination();
+            mapZerocoinSupply.at(denom)--;
+        }
+    }
+
+    for (const libzerocoin::CoinDenomination& denom : libzerocoin::zerocoinDenomList)
+        LogPrint("zero", "%s coins for denomination %d pubcoin %s\n", __func__, denom, mapZerocoinSupply.at(denom));
+
+    return true;
+}

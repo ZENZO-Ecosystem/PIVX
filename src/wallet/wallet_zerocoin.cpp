@@ -303,70 +303,7 @@ bool CWallet::SpendZerocoin(CAmount nAmount, CWalletTx& wtxNew, CZerocoinSpendRe
 bool CWallet::MintsToInputVectorPublicSpend(std::map<CBigNum, CZerocoinMint>& mapMintsSelected, const uint256& hashTxOut, std::vector<CTxIn>& vin,
                                     CZerocoinSpendReceipt& receipt, libzerocoin::SpendType spendType, CBlockIndex* pindexCheckpoint)
 {
-    // Default error status if not changed below
-    receipt.SetStatus(_("Transaction Mint Started"), ZPIV_TXMINT_GENERAL);
-
-    // Get the chain tip to determine the active public spend version
-    int nHeight = 0;
-    {
-        LOCK(cs_main);
-        nHeight = chainActive.Height();
-    }
-    if (!nHeight)
-        return error("%s: Unable to get chain tip height", __func__);
-
-    int spendVersion = CurrentPublicCoinSpendVersion();
-
-    for (auto &it : mapMintsSelected) {
-        CZerocoinMint mint = it.second;
-
-        // Create the simple input and the scriptSig -> Serial + Randomness + Private key signature of both.
-        // As the mint doesn't have the output index search it..
-        CTransaction txMint;
-        uint256 hashBlock;
-        if (!GetTransaction(mint.GetTxHash(), txMint, hashBlock)) {
-            receipt.SetStatus(strprintf(_("Unable to find transaction containing mint %s"), mint.GetTxHash().GetHex()), ZPIV_TXMINT_GENERAL);
-            return false;
-        } else if (mapBlockIndex.count(hashBlock) < 1) {
-            // check that this mint made it into the blockchain
-            receipt.SetStatus(_("Mint did not make it into blockchain"), ZPIV_TXMINT_GENERAL);
-            return false;
-        }
-
-        int outputIndex = -1;
-        for (unsigned long i = 0; i < txMint.vout.size(); ++i) {
-            CTxOut out = txMint.vout[i];
-            if (out.scriptPubKey.IsZerocoinMint()){
-                libzerocoin::PublicCoin pubcoin(Params().GetConsensus().Zerocoin_Params(false));
-                CValidationState state;
-                if (!TxOutToPublicCoin(out, pubcoin, state))
-                    return error("%s: extracting pubcoin from txout failed", __func__);
-
-                if (pubcoin.getValue() == mint.GetValue()){
-                    outputIndex = i;
-                    break;
-                }
-            }
-        }
-
-        if (outputIndex == -1) {
-            receipt.SetStatus(_("Pubcoin not found in mint tx"), ZPIV_TXMINT_GENERAL);
-            return false;
-        }
-
-        mint.SetOutputIndex(outputIndex);
-        CTxIn in;
-        if(!ZPIVModule::createInput(in, mint, hashTxOut, spendVersion)) {
-            receipt.SetStatus(_("Cannot create public spend input"), ZPIV_TXMINT_GENERAL);
-            return false;
-        }
-        vin.emplace_back(in);
-        receipt.AddSpend(CZerocoinSpend(mint.GetSerialNumber(), UINT256_ZERO, mint.GetValue(), mint.GetDenomination(), 0));
-    }
-
-    receipt.SetStatus(_("Spend Valid"), ZPIV_SPEND_OKAY); // Everything okay
-
-    return true;
+    return error("%s: Zerocoin mints are permanently disabled", __func__);
 }
 
 bool CWallet::CreateZCPublicSpendTransaction(

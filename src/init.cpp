@@ -403,7 +403,6 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-pid=<file>", strprintf(_("Specify pid file (default: %s)"), "zenzod.pid"));
 #endif
     strUsage += HelpMessageOpt("-reindex", _("Rebuild block chain index from current blk000??.dat files") + " " + _("on startup"));
-    strUsage += HelpMessageOpt("-reindexmoneysupply", _("Reindex the ZNZ money supply statistics") + " " + _("on startup"));
     strUsage += HelpMessageOpt("-resync", _("Delete blockchain folders and resync from scratch") + " " + _("on startup"));
 #if !defined(WIN32)
     strUsage += HelpMessageOpt("-sysperms", _("Create new files with system default permissions, instead of umask 077 (only effective with disabled wallet functionality)"));
@@ -1517,25 +1516,61 @@ bool AppInit2(const std::vector<std::string>& words)
                     break;
                 }
 
-                // Drop all information from the zerocoinDB and repopulate
-                if (GetBoolArg("-reindexzerocoin", false)) {
-                    if (chainActive.Height() > consensus.height_start_ZC) {
-                        uiInterface.InitMessage(_("Reindexing zerocoin database..."));
-                        std::string strError = ReindexZerocoinDB();
-                        if (strError != "") {
-                            strLoadError = strError;
-                            break;
+                bool fReindexZerocoin = GetBoolArg("-reindexzerocoin", false);
+                bool fReindexMoneySupply = false;
+
+                // Load ZNZ and zZNZ supply from db
+                const int chainHeight = WITH_LOCK(cs_main, return chainActive.Height());
+                if (chainHeight < 0) {
+                    nMoneySupply = 0;
+                } else {
+                    const uint256& tipHash = WITH_LOCK(cs_main, return chainActive[chainHeight]->GetBlockHash());
+                    CLegacyBlockIndex bi;
+
+                    // Load zZNZ supply map
+                    if (!fReindexZerocoin && !zerocoinDB->ReadZCSupply(mapZerocoinSupply)) {
+                        if (chainHeight < consensus.height_start_ZC) {
+                            // initialize map to 0
+                            mapZerocoinSupply.clear();
+                            for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
+
+                        } else {
+                            // try first reading legacy block index from DB
+                            if (pblocktree->ReadLegacyBlockIndex(tipHash, bi) && !bi.mapZerocoinSupply.empty()) {
+                                mapZerocoinSupply = bi.mapZerocoinSupply;
+                            } else {
+                                // reindex from disk
+                                fReindexZerocoin = true;
+                            }
+                        }
+                    }
+
+                    /// Load ZNZ supply amount
+                    if (!pblocktree->ReadMoneySupply(nMoneySupply)) {
+                        // try first reading legacy block index from disk
+                        if (pblocktree->ReadLegacyBlockIndex(tipHash, bi)) {
+                            nMoneySupply = bi.nMoneySupply;
+                        } else {
+                            // reindex from disk
+                            fReindexMoneySupply = true;
                         }
                     }
                 }
 
-                bool reindexZerocoin = false;
-                int chainHeight = chainActive.Height();
+                // Drop all information from the zerocoinDB and repopulate
+                if (fReindexZerocoin && chainHeight >= consensus.height_start_ZC) {
+                    uiInterface.InitMessage(_("Reindexing zerocoin database..."));
+                    std::string strError = ReindexZerocoinDB();
+                    if (strError != "") {
+                        strLoadError = strError;
+                        break;
+                    }
+                }
 
-                // Recalculate money supply for blocks that are impacted by accounting issue after zerocoin activation
-                if (GetBoolArg("-reindexmoneysupply", false)) {
-                    // Recalculate from the zerocoin activation or from scratch.
-                    RecalculatePIVSupply((reindexZerocoin ? consensus.height_start_ZC : 1), false);
+                // Recalculate money supply
+                if (fReindexMoneySupply) {
+                    // Skip zZNZ if already reindexed
+                    RecalculatePIVSupply(1, fReindexZerocoin);
                 }
 
                 if (!fReindex) {
@@ -1546,7 +1581,7 @@ bool AppInit2(const std::vector<std::string>& words)
 
                     {
                         LOCK(cs_main);
-                        CBlockIndex *tip = chainActive[chainActive.Height()];
+                        CBlockIndex *tip = chainActive[chainHeight];
                         RPCNotifyBlockChange(true, tip);
                         if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) {
                             strLoadError = _("The block database contains a block which appears to be from the future. "

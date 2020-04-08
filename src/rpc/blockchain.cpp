@@ -133,15 +133,6 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     if (pnext)
         result.push_back(Pair("nextblockhash", pnext->GetBlockHash().GetHex()));
 
-    result.push_back(Pair("moneysupply",ValueFromAmount(blockindex->nMoneySupply)));
-
-    UniValue zznzObj(UniValue::VOBJ);
-    for (auto denom : libzerocoin::zerocoinDenomList) {
-        zznzObj.push_back(Pair(std::to_string(denom), ValueFromAmount(blockindex->mapZerocoinSupply.at(denom) * (denom*COIN))));
-    }
-    zznzObj.push_back(Pair("total", ValueFromAmount(blockindex->GetZerocoinSupply())));
-    result.push_back(Pair("zerocoinsupply", zznzObj));
-
     //////////
     ////////// Coin stake data ////////////////
     /////////
@@ -495,19 +486,6 @@ UniValue getblock(const UniValue& params, bool fHelp)
             "  \"difficulty\" : x.xxx,  (numeric) The difficulty\n"
             "  \"previousblockhash\" : \"hash\",  (string) The hash of the previous block\n"
             "  \"nextblockhash\" : \"hash\"       (string) The hash of the next block\n"
-            "  \"moneysupply\" : \"supply\"       (numeric) The money supply when this block was added to the blockchain\n"
-            "  \"zerocoinsupply\" :\n"
-            "  {\n"
-            "     \"1\" : n,            (numeric) supply of 1 zZNZ denomination\n"
-            "     \"5\" : n,            (numeric) supply of 5 zZNZ denomination\n"
-            "     \"10\" : n,           (numeric) supply of 10 zZNZ denomination\n"
-            "     \"50\" : n,           (numeric) supply of 50 zZNZ denomination\n"
-            "     \"100\" : n,          (numeric) supply of 100 zZNZ denomination\n"
-            "     \"500\" : n,          (numeric) supply of 500 zZNZ denomination\n"
-            "     \"1000\" : n,         (numeric) supply of 1000 zZNZ denomination\n"
-            "     \"5000\" : n,         (numeric) supply of 5000 zZNZ denomination\n"
-            "     \"total\" : n,        (numeric) The total supply of all zZNZ denominations\n"
-            "  },\n"
             "  \"stakeModifier\" : \"xxx\",       (string) Proof of Stake modifier\n"
             "  \"hashProofOfStake\" : \"hash\",   (string) Proof of Stake hash\n"
             "  }\n"

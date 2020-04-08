@@ -215,7 +215,6 @@ public:
     // char vector holding the stake modifier bytes. It is empty for PoW blocks.
     // Modifier V1 is 64 bit while modifier V2 is 256 bit.
     std::vector<unsigned char> vStakeModifier{};
-    int64_t nMoneySupply{0};
     unsigned int nFlags{0};
 
     //! block header
@@ -229,12 +228,8 @@ public:
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId{0};
 
-    //! zerocoin specific fields
-    std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
-
-    CBlockIndex() { ClearMapZcSupply(); }
+    CBlockIndex() {}
     CBlockIndex(const CBlock& block);
-    void ClearMapZcSupply();
 
     std::string ToString() const;
 
@@ -272,17 +267,13 @@ public:
     //! Efficiently find an ancestor of this block.
     CBlockIndex* GetAncestor(int height);
     const CBlockIndex* GetAncestor(int height) const;
-
-    // Legacy Zerocoin
-    int64_t GetZerocoinSupply() const;
-    int64_t GetZcMints(libzerocoin::CoinDenomination denom) const;
-    int64_t GetZcMintsAmount(libzerocoin::CoinDenomination denom) const;
 };
 
 /** Used to marshal pointers into hashes for db storage. */
 
 // New serialization introduced with 2.0.0
 static const int DBI_OLD_SER_VERSION = 2000000;
+static const int DBI_SER_VERSION_NO_ZC = 2000001;   // removes mapZerocoinSupply, nMoneySupply
 
 class CDiskBlockIndex : public CBlockIndex
 {
@@ -317,12 +308,43 @@ public:
         if (nStatus & BLOCK_HAVE_UNDO)
             READWRITE(VARINT(nUndoPos));
 
-        if (nSerVersion >= DBI_OLD_SER_VERSION) {
-            // Serialization with CLIENT_VERSION > 4009900
+        if (nSerVersion >= DBI_SER_VERSION_NO_ZC) {
+            // Serialization with CLIENT_VERSION > 2000000
+            READWRITE(nFlags);
+            READWRITE(this->nVersion);
+            if (!Params().GetConsensus().IsStakeModifierV2(nHeight)) {
+                uint64_t nStakeModifier = 0;
+                READWRITE(nStakeModifier);
+                this->SetStakeModifier(nStakeModifier, this->GeneratedStakeModifier());
+            } else {
+                uint256 nStakeModifierV2;
+                READWRITE(nStakeModifierV2);
+                this->SetStakeModifier(nStakeModifierV2);
+            }
+            READWRITE(hashPrev);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nTime);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+            if(this->nVersion > 3 && this->nVersion < 7)
+                READWRITE(nAccumulatorCheckpoint);
+
+        } else if (nSerVersion > DBI_OLD_SER_VERSION) {
+            // Serialization with CLIENT_VERSION = 2000000
+            std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
+            int64_t nMoneySupply = 0;
             READWRITE(nMoneySupply);
             READWRITE(nFlags);
             READWRITE(this->nVersion);
-            READWRITE(vStakeModifier);
+            if (!Params().GetConsensus().IsStakeModifierV2(nHeight)) {
+                uint64_t nStakeModifier = 0;
+                READWRITE(nStakeModifier);
+                this->SetStakeModifier(nStakeModifier, this->GeneratedStakeModifier());
+            } else {
+                uint256 nStakeModifierV2;
+                READWRITE(nStakeModifierV2);
+                this->SetStakeModifier(nStakeModifierV2);
+            }
             READWRITE(hashPrev);
             READWRITE(hashMerkleRoot);
             READWRITE(nTime);
@@ -334,9 +356,10 @@ public:
             }
 
         } else {
-            // Serialization with CLIENT_VERSION <= 4009900
+            // Serialization with CLIENT_VERSION < 2000000
             int64_t nMint = 0;
-            uint256 hashNext;
+            uint256 hashNext{};
+            int64_t nMoneySupply = 0;
             READWRITE(nMint);
             READWRITE(nMoneySupply);
             READWRITE(nFlags);
@@ -363,6 +386,7 @@ public:
             READWRITE(nBits);
             READWRITE(nNonce);
             if(this->nVersion > 3) {
+                std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
                 std::vector<libzerocoin::CoinDenomination> vMintDenominationsInBlock;
                 READWRITE(nAccumulatorCheckpoint);
                 READWRITE(mapZerocoinSupply);
@@ -395,6 +419,92 @@ public:
             GetBlockHash().ToString(),
             hashPrev.ToString());
         return str;
+    }
+};
+
+/** Legacy block index - used to retrieve old serializations */
+
+class CLegacyBlockIndex : public CBlockIndex
+{
+public:
+    std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply{};
+    int64_t nMint = 0;
+    uint256 hashNext{};
+    uint256 hashPrev{};
+    uint64_t nStakeModifier = 0;
+    uint256 nStakeModifierV2{};
+    COutPoint prevoutStake{};
+    unsigned int nStakeTime = 0;
+    std::vector<libzerocoin::CoinDenomination> vMintDenominationsInBlock;
+    int64_t nMoneySupply = 0;
+
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nSerVersion)
+    {
+        if (!(nType & SER_GETHASH))
+            READWRITE(VARINT(nSerVersion));
+
+        if (nSerVersion >= DBI_SER_VERSION_NO_ZC) {
+            // no extra serialized field
+            return;
+        }
+
+        READWRITE(VARINT(nHeight));
+        READWRITE(VARINT(nStatus));
+        READWRITE(VARINT(nTx));
+        if (nStatus & (BLOCK_HAVE_DATA | BLOCK_HAVE_UNDO))
+            READWRITE(VARINT(nFile));
+        if (nStatus & BLOCK_HAVE_DATA)
+            READWRITE(VARINT(nDataPos));
+        if (nStatus & BLOCK_HAVE_UNDO)
+            READWRITE(VARINT(nUndoPos));
+
+        if (nSerVersion > DBI_OLD_SER_VERSION) {
+            // Serialization with CLIENT_VERSION = 2000000
+            READWRITE(nMoneySupply);
+            READWRITE(nFlags);
+            READWRITE(this->nVersion);
+            READWRITE(vStakeModifier);
+            READWRITE(hashPrev);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nTime);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+            if(this->nVersion > 3) {
+                READWRITE(mapZerocoinSupply);
+                if(this->nVersion < 7) READWRITE(nAccumulatorCheckpoint);
+            }
+
+        } else {
+            // Serialization with CLIENT_VERSION < 2000000
+            READWRITE(nMint);
+            READWRITE(nMoneySupply);
+            READWRITE(nFlags);
+            if (nHeight < Params().GetConsensus().height_start_StakeModifierV2) {
+                READWRITE(nStakeModifier);
+            } else {
+                READWRITE(nStakeModifierV2);
+            }
+            if (IsProofOfStake()) {
+                READWRITE(prevoutStake);
+                READWRITE(nStakeTime);
+            }
+            READWRITE(this->nVersion);
+            READWRITE(hashPrev);
+            READWRITE(hashNext);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nTime);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+            if(this->nVersion > 3) {
+                READWRITE(nAccumulatorCheckpoint);
+                READWRITE(mapZerocoinSupply);
+                READWRITE(vMintDenominationsInBlock);
+            }
+        }
     }
 };
 

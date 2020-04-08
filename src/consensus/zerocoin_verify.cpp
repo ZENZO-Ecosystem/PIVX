@@ -169,16 +169,19 @@ bool RecalculatePIVSupply(int nHeightStart, bool fSkipZpiv)
         return false;
 
     CBlockIndex* pindex = chainActive[nHeightStart];
-    CAmount nSupplyPrev = pindex->pprev->nMoneySupply;
-    if (nHeightStart == consensus.height_start_ZC)
-        nSupplyPrev = CAmount(5449796547496199);
 
-    uiInterface.ShowProgress(_("Recalculating PIV supply..."), 0);
+    if (!fSkipZpiv) {
+        // initialize supply to 0
+        mapZerocoinSupply.clear();
+        for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
+    }
+
+    uiInterface.ShowProgress(_("Recalculating ZNZ supply..."), 0);
     while (true) {
         if (pindex->nHeight % 1000 == 0) {
             LogPrintf("%s : block %d...\n", __func__, pindex->nHeight);
             int percent = std::max(1, std::min(99, (int)((double)((pindex->nHeight - nHeightStart) * 100) / (chainHeight - nHeightStart))));
-            uiInterface.ShowProgress(_("Recalculating PIV supply..."), percent);
+            uiInterface.ShowProgress(_("Recalculating ZNZ supply..."), percent);
         }
 
         CBlock block;
@@ -212,12 +215,11 @@ bool RecalculatePIVSupply(int nHeightStart, bool fSkipZpiv)
         }
 
         // Rewrite money supply
-        pindex->nMoneySupply = nSupplyPrev + nValueOut - nValueIn;
-        nSupplyPrev = pindex->nMoneySupply;
+        nMoneySupply += (nValueOut - nValueIn);
 
         // Rewrite zpiv supply too
         if (!fSkipZpiv && pindex->nHeight >= consensus.height_start_ZC) {
-            UpdateZPIVSupply(block, pindex, true);
+            UpdateZPIVSupplyConnect(block, pindex, true);
         }
 
         assert(pblocktree->WriteBlockIndex(CDiskBlockIndex(pindex)));
@@ -231,58 +233,5 @@ bool RecalculatePIVSupply(int nHeightStart, bool fSkipZpiv)
             break;
     }
     uiInterface.ShowProgress("", 100);
-    return true;
-}
-
-bool UpdateZPIVSupply(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
-{
-    const Consensus::Params& consensus = Params().GetConsensus();
-    if (pindex->nHeight < consensus.height_start_ZC)
-        return true;
-
-    //Reset the supply to previous block
-    pindex->mapZerocoinSupply = pindex->pprev->mapZerocoinSupply;
-
-    //Add mints to zPIV supply (mints are forever disabled after last checkpoint)
-    if (pindex->nHeight < consensus.height_last_ZC_AccumCheckpoint) {
-        std::list<CZerocoinMint> listMints;
-        std::set<uint256> setAddedToWallet;
-        BlockToZerocoinMintList(block, listMints, true);
-        for (const auto& m : listMints) {
-            pindex->mapZerocoinSupply.at(m.GetDenomination())++;
-            //Remove any of our own mints from the mintpool
-            if (!fJustCheck && pwalletMain) {
-                if (pwalletMain->IsMyMint(m.GetValue())) {
-                    pwalletMain->UpdateMint(m.GetValue(), pindex->nHeight, m.GetTxHash(), m.GetDenomination());
-                    // Add the transaction to the wallet
-                    for (auto& tx : block.vtx) {
-                        uint256 txid = tx.GetHash();
-                        if (setAddedToWallet.count(txid))
-                            continue;
-                        if (txid == m.GetTxHash()) {
-                            CWalletTx wtx(pwalletMain, tx);
-                            wtx.nTimeReceived = block.GetBlockTime();
-                            wtx.SetMerkleBranch(block);
-                            pwalletMain->AddToWallet(wtx, false, nullptr);
-                            setAddedToWallet.insert(txid);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    //Remove spends from zPIV supply
-    std::list<libzerocoin::CoinDenomination> listDenomsSpent = ZerocoinSpendListFromBlock(block, true);
-    for (const auto& denom : listDenomsSpent) {
-        pindex->mapZerocoinSupply.at(denom)--;
-        // zerocoin failsafe
-        if (pindex->mapZerocoinSupply.at(denom) < 0)
-            return error("Block contains zerocoins that spend more than are in the available supply to spend");
-    }
-
-    for (const auto& denom : libzerocoin::zerocoinDenomList)
-        LogPrint("zero", "%s coins for denomination %d pubcoin %s\n", __func__, denom, pindex->mapZerocoinSupply.at(denom));
-
     return true;
 }
