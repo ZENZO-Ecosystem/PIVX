@@ -152,7 +152,9 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock);
         CMutableTransaction txCoinStake;
         int64_t nTxNewTime = 0;
-        if (!pwallet->CreateCoinStake(*pwallet, pindexPrev, pblock->nBits, txCoinStake, nTxNewTime)) {
+                int64_t nSearchTime = pblock->nTime; // search to current time
+        CStakerStatus* ss = pwalletMain->pStakerStatus;
+        if (!pwallet->CreateCoinStakeOld(*pwallet, pblock->nBits,nSearchTime -  (int)(GetTime() - ss->GetLastTime()), txCoinStake, nTxNewTime)) {
             LogPrint("staking", "%s : stake not found\n", __func__);
             return nullptr;
         }
