@@ -1522,7 +1522,10 @@ bool AppInit2(const std::vector<std::string>& words)
                 // Load ZNZ and zZNZ supply from db
                 const int chainHeight = WITH_LOCK(cs_main, return chainActive.Height());
                 if (chainHeight < 0) {
+                    // No blocks, so we clear the supply and zerocoin map
                     nMoneySupply = 0;
+                    mapZerocoinSupply.clear();
+                    for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
                 } else {
                     const uint256& tipHash = WITH_LOCK(cs_main, return chainActive[chainHeight]->GetBlockHash());
                     CLegacyBlockIndex bi;

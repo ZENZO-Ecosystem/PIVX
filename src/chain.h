@@ -329,7 +329,7 @@ public:
             if(this->nVersion > 3 && this->nVersion < 7)
                 READWRITE(nAccumulatorCheckpoint);
 
-        } else if (nSerVersion > DBI_OLD_SER_VERSION) {
+        } else if (nSerVersion == DBI_OLD_SER_VERSION) {
             // Serialization with CLIENT_VERSION = 2000000
             std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
             int64_t nMoneySupply = 0;
@@ -355,7 +355,7 @@ public:
                 if(this->nVersion < 7) READWRITE(nAccumulatorCheckpoint);
             }
 
-        } else {
+        } else if (ser_action.ForRead()) {
             // Serialization with CLIENT_VERSION < 2000000
             int64_t nMint = 0;
             uint256 hashNext{};

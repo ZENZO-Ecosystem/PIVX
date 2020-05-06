@@ -2273,12 +2273,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!UpdateZPIVSupplyConnect(block, pindex, fJustCheck))
         return state.DoS(100, error("%s: Failed to calculate new zZNZ supply for block=%s height=%d", __func__,
                                     block.GetHash().GetHex(), pindex->nHeight), REJECT_INVALID);
-    
-    // ZC-MAP-ERROR:
-    // When zerocoin blocks are hit, (first ZC block is 844) below here CAN NOT be reached, UpdateZPIVSupplyConnect
-    // hits an exeption of: ""EXCEPTION: St12out_of_range -- map::at"", most likely in mapZerocoinSupply.at();
-
-    LogPrintf("  - Finished UpdateZPIVSupplyConnect() on block %s \n", pindex->nHeight);
 
     // track money supply and mint amount info
     nMoneySupply += (nValueOut - nValueIn);

@@ -380,29 +380,8 @@ bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex, bool fJus
     const Consensus::Params& consensus = Params().GetConsensus();
     if (pindex->nHeight < consensus.height_start_ZC)
         return true;
-    
-    LogPrintf("  - Running UpdateZPIVSupplyConnect() on block %s \n", pindex->nHeight);
 
     //Add mints to zZNZ supply (mints are forever disabled after last checkpoint)
-
-    // ZC-MAP-ERROR: It seems once hitting a zerocoin mint block (first mint at block 844),
-    // mapZerocoinSupply.at() is causing "EXCEPTION: St12out_of_range -- map::at"
-
-    /*
-        2020-04-08 14:44:13 Running ConnectBlock() on block 844 
-        2020-04-08 14:44:13   - Running transaction forloop in ConnectBlock() on block 844 
-        2020-04-08 14:44:13   - Running transaction forloop in ConnectBlock() on block 844 
-        2020-04-08 14:44:13   - Running transaction forloop in ConnectBlock() on block 844 
-        2020-04-08 14:44:14 TxOutToPublicCoin ZCPRINT denomination 1000 pubcoin 565740e360446c33acda4e943652e4b1384101be6546ef09ce04b9aec9ebd4e708d8b62845e558034429140047b858c18d0bbb3d8ff20ba258c4569304640db438d9ccfd9fddfd608116beed68b3fca9fceaa6d85df7aedd395d89ba375c575464075614896efffb643819515cd7100a72037c8c087f3ca9bf91ee4b3b945e1
-        2020-04-08 14:44:14   - Running UpdateZPIVSupplyConnect() on block 844 
-        2020-04-08 14:44:14 TxOutToPublicCoin ZCPRINT denomination 1000 pubcoin 565740e360446c33acda4e943652e4b1384101be6546ef09ce04b9aec9ebd4e708d8b62845e558034429140047b858c18d0bbb3d8ff20ba258c4569304640db438d9ccfd9fddfd608116beed68b3fca9fceaa6d85df7aedd395d89ba375c575464075614896efffb643819515cd7100a72037c8c087f3ca9bf91ee4b3b945e1
-        2020-04-08 14:44:14 
-
-        ************************
-        EXCEPTION: St12out_of_range       
-        map::at
-    */
-
     if (pindex->nHeight < consensus.height_last_ZC_AccumCheckpoint) {
         std::list<CZerocoinMint> listMints;
         BlockToZerocoinMintList(block, listMints, true);
@@ -411,20 +390,14 @@ bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex, bool fJus
         }
     }
 
-    LogPrintf("  - Added mints to zZNZ supply on block %s \n", pindex->nHeight);
-
     //Remove spends from zZNZ supply
     std::list<libzerocoin::CoinDenomination> listDenomsSpent = ZerocoinSpendListFromBlock(block, true);
     for (const libzerocoin::CoinDenomination& denom : listDenomsSpent) {
         mapZerocoinSupply.at(denom)--;
     }
 
-    LogPrintf("  - Removed spends from zZNZ supply on block %s \n", pindex->nHeight);
-
     for (const libzerocoin::CoinDenomination& denom : libzerocoin::zerocoinDenomList)
         LogPrint("zero", "%s coins for denomination %d pubcoin %s\n", __func__, denom, mapZerocoinSupply.at(denom));
-
-    LogPrintf("  - Got past DenomList forloop in UpdateZPIVSupplyConnect() on block %s \n", pindex->nHeight);
 
     return true;
 }
