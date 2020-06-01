@@ -17,6 +17,7 @@
 #include "timedata.h"
 #include "util.h"
 #ifdef ENABLE_WALLET
+#include "wallet/rpcwallet.h"
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
 #include "forgeman.h"
@@ -44,9 +45,9 @@ extern std::vector<CSporkDef> sporkDefs;
  *
  * Or alternatively, create a specific query method for the information.
  **/
-UniValue getinfo(const UniValue& params, bool fHelp)
+UniValue getinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw std::runtime_error(
             "getinfo\n"
             "\nReturns an object containing various state info.\n"
@@ -90,7 +91,9 @@ UniValue getinfo(const UniValue& params, bool fHelp)
             HelpExampleCli("getinfo", "") + HelpExampleRpc("getinfo", ""));
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+
+    LOCK2(cs_main, pwallet ? &pwallet->cs_wallet : NULL);
 #else
     LOCK(cs_main);
 #endif
@@ -121,11 +124,11 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
     obj.push_back(Pair("services", services));
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
-        obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
-        obj.push_back(Pair("balance", ValueFromAmount(pwalletMain->GetBalance())));
-        obj.push_back(Pair("zerocoinbalance", ValueFromAmount(pwalletMain->GetZerocoinBalance(true))));
-        obj.push_back(Pair("staking status", (pwalletMain->pStakerStatus->IsActive() ?
+    if (pwallet) {
+        obj.push_back(Pair("walletversion", pwallet->GetVersion()));
+        obj.push_back(Pair("balance", ValueFromAmount(pwallet->GetBalance())));
+        obj.push_back(Pair("zerocoinbalance", ValueFromAmount(pwallet->GetZerocoinBalance(true))));
+        obj.push_back(Pair("staking status", (pwallet->pStakerStatus->IsActive() ?
                                                 "Staking Active" :
                                                 "Staking Not Active")));
     }
@@ -152,12 +155,13 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("zerocoinsupply", zznzObj));
 
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
-        obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
-        obj.push_back(Pair("keypoolsize", (int64_t)pwalletMain->KeypoolCountExternalKeys()));
+    if (pwallet) {
+        obj.push_back(Pair("keypoololdest", pwallet->GetOldestKeyPoolTime()));
+        obj.push_back(Pair("keypoolsize", (int64_t)pwallet->KeypoolCountExternalKeys()));
     }
-    if (pwalletMain && pwalletMain->IsCrypted())
-        obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
+    if (pwallet && pwallet->IsCrypted()) {
+        obj.push_back(Pair("unlocked_until", pwallet->nRelockTime));
+    }
     obj.push_back(Pair("paytxfee", ValueFromAmount(payTxFee.GetFeePerK())));
 #endif
     obj.push_back(Pair("relayfee", ValueFromAmount(::minRelayTxFee.GetFeePerK())));
@@ -165,13 +169,13 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     return obj;
 }
 
-UniValue mnsync(const UniValue& params, bool fHelp)
+UniValue mnsync(const JSONRPCRequest& request)
 {
     std::string strMode;
-    if (params.size() == 1)
-        strMode = params[0].get_str();
+    if (request.params.size() == 1)
+        strMode = request.params[0].get_str();
 
-    if (fHelp || params.size() != 1 || (strMode != "status" && strMode != "reset")) {
+    if (request.fHelp || request.params.size() != 1 || (strMode != "status" && strMode != "reset")) {
         throw std::runtime_error(
             "mnsync \"status|reset\"\n"
             "\nReturns the sync status or resets sync.\n"
@@ -243,7 +247,9 @@ private:
     isminetype mine;
 
 public:
-    DescribeAddressVisitor(isminetype mineIn) : mine(mineIn) {}
+    CWallet * const pwallet;
+
+    DescribeAddressVisitor(CWallet *_pwallet) : pwallet(_pwallet) {}
 
     UniValue operator()(const CNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
@@ -251,11 +257,9 @@ public:
         UniValue obj(UniValue::VOBJ);
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
-        if (bool(mine & ISMINE_ALL)) {
-            pwalletMain->GetPubKey(keyID, vchPubKey);
-            obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
-            obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
-        }
+        pwallet->GetPubKey(keyID, vchPubKey);
+        obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
+        obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
         return obj;
     }
 
@@ -263,7 +267,7 @@ public:
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("isscript", true));
         CScript subscript;
-        pwalletMain->GetCScript(scriptID, subscript);
+        pwallet->GetCScript(scriptID, subscript);
         std::vector<CTxDestination> addresses;
         txnouttype whichType;
         int nRequired;
@@ -284,29 +288,29 @@ public:
 /*
     Used for updating/reading spork settings on the network
 */
-UniValue spork(const UniValue& params, bool fHelp)
+UniValue spork(const JSONRPCRequest& request)
 {
-    if (params.size() == 1 && params[0].get_str() == "show") {
+    if (request.params.size() == 1 && request.params[0].get_str() == "show") {
         UniValue ret(UniValue::VOBJ);
         for (const auto& sporkDef : sporkDefs) {
             ret.push_back(Pair(sporkDef.name, sporkManager.GetSporkValue(sporkDef.sporkId)));
         }
         return ret;
-    } else if (params.size() == 1 && params[0].get_str() == "active") {
+    } else if (request.params.size() == 1 && request.params[0].get_str() == "active") {
         UniValue ret(UniValue::VOBJ);
         for (const auto& sporkDef : sporkDefs) {
             ret.push_back(Pair(sporkDef.name, sporkManager.IsSporkActive(sporkDef.sporkId)));
         }
         return ret;
-    } else if (params.size() == 2) {
+    } else if (request.params.size() == 2) {
         // advanced mode, update spork values
-        SporkId nSporkID = sporkManager.GetSporkIDByName(params[0].get_str());
+        SporkId nSporkID = sporkManager.GetSporkIDByName(request.params[0].get_str());
         if (nSporkID == SPORK_INVALID) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid spork name");
         }
 
         // SPORK VALUE
-        int64_t nValue = params[1].get_int64();
+        int64_t nValue = request.params[1].get_int64();
 
         //broadcast new spork
         if (sporkManager.UpdateSpork(nSporkID, nValue)) {
@@ -344,9 +348,9 @@ UniValue spork(const UniValue& params, bool fHelp)
         HelpExampleCli("spork", "show") + HelpExampleRpc("spork", "show"));
 }
 
-UniValue validateaddress(const UniValue& params, bool fHelp)
+UniValue validateaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "validateaddress \"zenzoaddress\"\n"
             "\nReturn information about the given ZENZO address.\n"
@@ -359,9 +363,9 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
             "  \"isvalid\" : true|false,         (boolean) If the address is valid or not. If not, this is the only property returned.\n"
             "  \"address\" : \"zenzoaddress\",    (string) The ZENZO address validated\n"
             "  \"scriptPubKey\" : \"hex\",       (string) The hex encoded scriptPubKey generated by the address\n"
-            "  \"ismine\" : true|false,          (boolean) If the address is yours or not\n"
+            //"  \"ismine\" : true|false,          (boolean) If the address is yours or not\n"
             "  \"isstaking\" : true|false,       (boolean) If the address is a staking address for ZENZO cold staking\n"
-            "  \"iswatchonly\" : true|false,     (boolean) If the address is watchonly\n"
+            //"  \"iswatchonly\" : true|false,     (boolean) If the address is watchonly\n"
             "  \"isscript\" : true|false,        (boolean) If the key is a script\n"
             "  \"hex\" : \"hex\",                (string, optional) The redeemscript for the P2SH address\n"
             "  \"pubkey\" : \"publickeyhex\",    (string) The hex value of the raw public key\n"
@@ -375,12 +379,14 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
             HelpExampleCli("validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\"") + HelpExampleRpc("validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\""));
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+
+    LOCK2(cs_main, pwallet ? &pwallet->cs_wallet : NULL);
 #else
     LOCK(cs_main);
 #endif
 
-    CBitcoinAddress address(params[0].get_str());
+    CBitcoinAddress address(request.params[0].get_str());
     bool isValid = address.IsValid();
 
     UniValue ret(UniValue::VOBJ);
@@ -393,19 +399,20 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
         ret.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
 
 #ifdef ENABLE_WALLET
-        isminetype mine = pwalletMain ? IsMine(*pwalletMain, dest) : ISMINE_NO;
-        ret.push_back(Pair("ismine", bool(mine & (ISMINE_SPENDABLE_ALL | ISMINE_COLD))));
+        //isminetype mine = pwallet ? IsMine(*pwallet, dest) : ISMINE_NO;
+        //ret.push_back(Pair("ismine", bool(mine & (ISMINE_SPENDABLE_ALL | ISMINE_COLD))));
         ret.push_back(Pair("isstaking", address.IsStakingAddress()));
-        ret.push_back(Pair("iswatchonly", bool(mine & ISMINE_WATCH_ONLY)));
-        UniValue detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
+        //ret.push_back(Pair("iswatchonly", bool(mine & ISMINE_WATCH_ONLY)));
+        UniValue detail = boost::apply_visitor(DescribeAddressVisitor(pwallet), dest);
         ret.pushKVs(detail);
-        if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
-            ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest].name));
+        if (pwallet && pwallet->mapAddressBook.count(dest)) {
+            ret.push_back(Pair("account", pwallet->mapAddressBook[dest].name));
+        }
         CKeyID keyID;
         CHDChain hdChainCurrent;
-        if (pwalletMain && address.GetKeyID(keyID) && pwalletMain->mapHdPubKeys.count(keyID) && pwalletMain->GetHDChain(hdChainCurrent))
+        if (pwallet && address.GetKeyID(keyID) && pwallet->mapHdPubKeys.count(keyID) && pwallet->GetHDChain(hdChainCurrent))
         {
-            ret.push_back(Pair("hdkeypath", pwalletMain->mapHdPubKeys[keyID].GetKeyPath()));
+            ret.push_back(Pair("hdkeypath", pwallet->mapHdPubKeys[keyID].GetKeyPath()));
             ret.push_back(Pair("hdchainid", hdChainCurrent.GetID().GetHex()));
         }
 #endif
@@ -413,10 +420,13 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
     return ret;
 }
 
+// Needed even with !ENABLE_WALLET, to pass (ignored) pointers around
+class CWallet;
+
 /**
  * Used by addmultisigaddress / createmultisig:
  */
-CScript _createmultisig_redeemScript(const UniValue& params)
+CScript _createmultisig_redeemScript(CWallet * const pwallet, const UniValue& params)
 {
     int nRequired = params[0].get_int();
     const UniValue& keys = params[1].get_array();
@@ -438,13 +448,13 @@ CScript _createmultisig_redeemScript(const UniValue& params)
 #ifdef ENABLE_WALLET
         // Case 1: ZENZO address and we have full public key:
         CBitcoinAddress address(ks);
-        if (pwalletMain && address.IsValid()) {
+        if (pwallet && address.IsValid()) {
             CKeyID keyID;
             if (!address.GetKeyID(keyID))
                 throw std::runtime_error(
                     strprintf("%s does not refer to a key", ks));
             CPubKey vchPubKey;
-            if (!pwalletMain->GetPubKey(keyID, vchPubKey))
+            if (!pwallet->GetPubKey(keyID, vchPubKey))
                 throw std::runtime_error(
                     strprintf("no full public key for address %s", ks));
             if (!vchPubKey.IsFullyValid())
@@ -473,9 +483,15 @@ CScript _createmultisig_redeemScript(const UniValue& params)
     return result;
 }
 
-UniValue createmultisig(const UniValue& params, bool fHelp)
+UniValue createmultisig(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2 || params.size() > 2)
+#ifdef ENABLE_WALLET
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+#else
+    CWallet * const pwallet = NULL;
+#endif
+
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
         throw std::runtime_error(
             "createmultisig nrequired [\"key\",...]\n"
             "\nCreates a multi-signature address with n signature of m keys required.\n"
@@ -502,7 +518,7 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
             HelpExampleRpc("createmultisig", "2, \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\""));
 
     // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig_redeemScript(params);
+    CScript inner = _createmultisig_redeemScript(pwallet, request.params);
     CScriptID innerID(inner);
     CBitcoinAddress address(innerID);
 
@@ -513,9 +529,9 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue verifymessage(const UniValue& params, bool fHelp)
+UniValue verifymessage(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 3)
+    if (request.fHelp || request.params.size() != 3)
         throw std::runtime_error(
             "verifymessage \"zenzoaddress\" \"signature\" \"message\"\n"
             "\nVerify a signed message\n"
@@ -540,9 +556,9 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    std::string strAddress = params[0].get_str();
-    std::string strSign = params[1].get_str();
-    std::string strMessage = params[2].get_str();
+    std::string strAddress = request.params[0].get_str();
+    std::string strSign = request.params[1].get_str();
+    std::string strMessage = request.params[2].get_str();
 
     CBitcoinAddress addr(strAddress);
     if (!addr.IsValid())
@@ -569,9 +585,9 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
     return (pubkey.GetID() == keyID);
 }
 
-UniValue setmocktime(const UniValue& params, bool fHelp)
+UniValue setmocktime(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "setmocktime timestamp\n"
             "\nSet the local time to given timestamp (-regtest only)\n"
@@ -585,16 +601,17 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
-    SetMockTime(params[0].get_int64());
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VNUM));
+    SetMockTime(request.params[0].get_int64());
 
     return NullUniValue;
 }
 
 #ifdef ENABLE_WALLET
-UniValue getstakingstatus(const UniValue& params, bool fHelp)
+UniValue getstakingstatus(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (request.fHelp || request.params.size() != 0)
         throw std::runtime_error(
             "getstakingstatus\n"
             "\nReturns an object containing various staking information.\n"
@@ -621,24 +638,24 @@ UniValue getstakingstatus(const UniValue& params, bool fHelp)
             HelpExampleCli("getstakingstatus", "") + HelpExampleRpc("getstakingstatus", ""));
 
 
-    if (!pwalletMain)
+    if (!pwallet)
         throw JSONRPCError(RPC_IN_WARMUP, "Try again after active chain is loaded");
     {
-        LOCK2(cs_main, &pwalletMain->cs_wallet);
+        LOCK2(cs_main, &pwallet->cs_wallet);
         UniValue obj(UniValue::VOBJ);
-        obj.push_back(Pair("staking_status", pwalletMain->pStakerStatus->IsActive()));
+        obj.push_back(Pair("staking_status", pwallet->pStakerStatus->IsActive()));
         obj.push_back(Pair("staking_enabled", GetBoolArg("-staking", true)));
         bool fColdStaking = GetBoolArg("-coldstaking", true);
         obj.push_back(Pair("coldstaking_enabled", fColdStaking));
         obj.push_back(Pair("haveconnections", !vNodes.empty()));
         obj.push_back(Pair("mnsync", !masternodeSync.NotCompleted()));
-        obj.push_back(Pair("walletunlocked", !pwalletMain->IsLocked()));
+        obj.push_back(Pair("walletunlocked", !pwallet->IsLocked()));
         std::vector<COutput> vCoins;
-        pwalletMain->StakeableCoins(&vCoins);
+        pwallet->StakeableCoins(&vCoins);
         obj.push_back(Pair("stakeablecoins", (int)vCoins.size()));
-        obj.push_back(Pair("stakingbalance", ValueFromAmount(pwalletMain->GetStakingBalance(fColdStaking))));
-        obj.push_back(Pair("stakesplitthreshold", ValueFromAmount(pwalletMain->nStakeSplitThreshold)));
-        CStakerStatus* ss = pwalletMain->pStakerStatus;
+        obj.push_back(Pair("stakingbalance", ValueFromAmount(pwallet->GetStakingBalance(fColdStaking))));
+        obj.push_back(Pair("stakesplitthreshold", ValueFromAmount(pwallet->nStakeSplitThreshold)));
+        CStakerStatus* ss = pwallet->pStakerStatus;
         if (ss) {
             obj.push_back(Pair("lastattempt_age", (int)(GetTime() - ss->GetLastTime())));
             obj.push_back(Pair("lastattempt_depth", (chainActive.Height() - ss->GetLastHeight())));
@@ -652,9 +669,10 @@ UniValue getstakingstatus(const UniValue& params, bool fHelp)
 
 }
 
-UniValue listforgeitems(const UniValue& params, bool fHelp)
+UniValue listforgeitems(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (request.fHelp || request.params.size() != 0)
         throw std::runtime_error(
             "listforgeitems\n"
             "\nReturns an array containing the list of owned ZFIs.\n"
@@ -672,20 +690,18 @@ UniValue listforgeitems(const UniValue& params, bool fHelp)
             HelpExampleCli("listforgeitems", "") + HelpExampleRpc("listforgeitems", ""));
 
 
-    if (!pwalletMain)
+    if (!pwallet)
         throw JSONRPCError(RPC_IN_WARMUP, "Try again after active chain is loaded");
-    {
-        LOCK2(cs_main, &pwalletMain->cs_wallet);
-        UniValue results(UniValue::VARR);
-        for (const CForge::CForgeItem& item : forgeMain.getEntries()) {
-            UniValue obj(UniValue::VOBJ);
-            obj.push_back(Pair("name", item.getName()));
-            obj.push_back(Pair("tx", item.getTxHash()));
-            obj.push_back(Pair("vout", item.getOutputIndex()));
-            results.push_back(obj);
-        }
-        return results;
+    
+    UniValue results(UniValue::VARR);
+    for (const CForge::CForgeItem& item : forgeMain.getEntries()) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("name", item.getName()));
+        obj.push_back(Pair("tx", item.getTxHash()));
+        obj.push_back(Pair("vout", item.getOutputIndex()));
+        results.push_back(obj);
     }
+    return results;
 
 
 }

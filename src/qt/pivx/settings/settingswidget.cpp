@@ -227,7 +227,7 @@ void SettingsWidget::onResetAction(){
 
 void SettingsWidget::onSaveOptionsClicked(){
     if(mapper->submit()) {
-        pwalletMain->MarkDirty();
+        vpwallets.front()->MarkDirty();
         if (this->clientModel->getOptionsModel()->isRestartRequired()) {
             bool fAcceptRestart = openStandardDialog(tr("Restart required"), tr("Your wallet needs to be restarted to apply the changes\n"), tr("Restart Now"), tr("Restart Later"));
 

@@ -94,8 +94,8 @@ void Splash::unsubscribeFromCoreSignals(){
     uiInterface.InitMessage.disconnect(boost::bind(InitMessage, this, _1));
     uiInterface.ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
 #ifdef ENABLE_WALLET
-    if (pwalletMain)
-        pwalletMain->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
+    if (vpwallets.front())
+        vpwallets.front()->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
 #endif
 }
 

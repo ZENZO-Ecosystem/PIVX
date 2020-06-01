@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "guiinterface.h"
 
 #include <stdint.h>
 
@@ -19,12 +20,9 @@
 #endif
 
 #include <boost/filesystem.hpp>
+#include <boost/foreach.hpp>
 #include <boost/thread.hpp>
 #include <boost/version.hpp>
-
-
-
-unsigned int nWalletDBUpdated;
 
 
 //
@@ -148,7 +146,7 @@ void CDBEnv::MakeMock()
     fMockDb = true;
 }
 
-CDBEnv::VerifyResult CDBEnv::Verify(std::string strFile, bool (*recoverFunc)(CDBEnv& dbenv, std::string strFile))
+CDBEnv::VerifyResult CDBEnv::Verify(const std::string& strFile, recoverFunc_type recoverFunc, std::string& out_backup_filename)
 {
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
@@ -161,8 +159,133 @@ CDBEnv::VerifyResult CDBEnv::Verify(std::string strFile, bool (*recoverFunc)(CDB
         return RECOVER_FAIL;
 
     // Try to recover:
-    bool fRecovered = (*recoverFunc)(*this, strFile);
+    bool fRecovered = (*recoverFunc)(strFile, out_backup_filename);
     return (fRecovered ? RECOVER_OK : RECOVER_FAIL);
+}
+
+bool CDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& newFilename)
+{
+    // Recovery procedure:
+    // move wallet file to walletfilename.timestamp.bak
+    // Call Salvage with fAggressive=true to
+    // get as much data as possible.
+    // Rewrite salvaged data to fresh wallet file
+    // Set -rescan so any missing transactions will be
+    // found.
+    int64_t now = GetTime();
+    newFilename = strprintf("%s.%d.bak", filename, now);
+
+    int result = bitdb.dbenv->dbrename(NULL, filename.c_str(), NULL,
+                                       newFilename.c_str(), DB_AUTO_COMMIT);
+    if (result == 0)
+        LogPrintf("Renamed %s to %s\n", filename, newFilename);
+    else
+    {
+        LogPrintf("Failed to rename %s to %s\n", filename, newFilename);
+        return false;
+    }
+
+    std::vector<CDBEnv::KeyValPair> salvagedData;
+    bool fSuccess = bitdb.Salvage(newFilename, true, salvagedData);
+    if (salvagedData.empty())
+    {
+        LogPrintf("Salvage(aggressive) found no records in %s.\n", newFilename);
+        return false;
+    }
+    LogPrintf("Salvage(aggressive) found %u records\n", salvagedData.size());
+
+    std::unique_ptr<Db> pdbCopy(new Db(bitdb.dbenv, 0));
+    int ret = pdbCopy->open(NULL,               // Txn pointer
+                            filename.c_str(),   // Filename
+                            "main",             // Logical db name
+                            DB_BTREE,           // Database type
+                            DB_CREATE,          // Flags
+                            0);
+    if (ret > 0)
+    {
+        LogPrintf("Cannot create database file %s\n", filename);
+        return false;
+    }
+
+    DbTxn* ptxn = bitdb.TxnBegin();
+    BOOST_FOREACH(CDBEnv::KeyValPair& row, salvagedData)
+    {
+        if (recoverKVcallback)
+        {
+            CDataStream ssKey(row.first, SER_DISK, CLIENT_VERSION);
+            CDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
+            std::string strType, strErr;
+            if (!(*recoverKVcallback)(callbackDataIn, ssKey, ssValue))
+                continue;
+        }
+        Dbt datKey(&row.first[0], row.first.size());
+        Dbt datValue(&row.second[0], row.second.size());
+        int ret2 = pdbCopy->put(ptxn, &datKey, &datValue, DB_NOOVERWRITE);
+        if (ret2 > 0)
+            fSuccess = false;
+    }
+    ptxn->commit(0);
+    pdbCopy->close(0);
+
+    return fSuccess;
+}
+
+bool CDB::VerifyEnvironment(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& errorStr)
+{
+    LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
+    LogPrintf("Using wallet %s\n", walletFile);
+
+    // Wallet file must be a plain filename without a directory
+    if (walletFile != boost::filesystem::basename(walletFile) + boost::filesystem::extension(walletFile))
+    {
+        errorStr = strprintf(_("Wallet %s resides outside data directory %s"), walletFile, dataDir.string());
+        return false;
+    }
+
+    if (!bitdb.Open(dataDir))
+    {
+        // try moving the database env out of the way
+        boost::filesystem::path pathDatabase = dataDir / "database";
+        boost::filesystem::path pathDatabaseBak = dataDir / strprintf("database.%d.bak", GetTime());
+        try {
+            boost::filesystem::rename(pathDatabase, pathDatabaseBak);
+            LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
+        } catch (const boost::filesystem::filesystem_error&) {
+            // failure is ok (well, not really, but it's not worse than what we started with)
+        }
+
+        // try again
+        if (!bitdb.Open(dataDir)) {
+            // if it still fails, it probably means we can't even create the database env
+            errorStr = strprintf(_("Error initializing wallet database environment %s!"), GetDataDir());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CDB::VerifyDatabaseFile(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& warningStr, std::string& errorStr, CDBEnv::recoverFunc_type recoverFunc)
+{
+    if (boost::filesystem::exists(dataDir / walletFile))
+    {
+        std::string backup_filename;
+        CDBEnv::VerifyResult r = bitdb.Verify(walletFile, recoverFunc, backup_filename);
+        if (r == CDBEnv::RECOVER_OK)
+        {
+            warningStr = strprintf(_("Warning: Wallet file corrupt, data salvaged!"
+                                     " Original %s saved as %s in %s; if"
+                                     " your balance or transactions are incorrect you should"
+                                     " restore from a backup."),
+                                   walletFile, backup_filename, dataDir);
+        }
+        if (r == CDBEnv::RECOVER_FAIL)
+        {
+            errorStr = strprintf(_("%s corrupt, salvage failed"), walletFile);
+            return false;
+        }
+    }
+    // also return true if files does not exists
+    return true;
 }
 
 bool CDBEnv::Salvage(std::string strFile, bool fAggressive, std::vector<CDBEnv::KeyValPair>& vResult)
@@ -232,13 +355,15 @@ void CDBEnv::lsn_reset(const std::string& strFile)
 }
 
 
-CDB::CDB(const std::string& strFilename, const char* pszMode, bool fFlushOnCloseIn) : pdb(NULL), activeTxn(NULL)
+CDB::CDB(CWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnCloseIn) : pdb(NULL), activeTxn(NULL)
 {
     int ret;
     fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
     fFlushOnClose = fFlushOnCloseIn;
-    if (strFilename.empty())
+    if (dbw.IsDummy()) {
         return;
+    }
+    const std::string &strFilename = dbw.strFile;
 
     bool fCreate = strchr(pszMode, 'c') != NULL;
     unsigned int nFlags = DB_THREAD;
@@ -305,6 +430,11 @@ void CDB::Flush()
     bitdb.dbenv->txn_checkpoint(nMinutes ? GetArg("-dblogsize", 100) * 1024 : 0, nMinutes, 0);
 }
 
+void CWalletDBWrapper::IncrementUpdateCounter()
+{
+    ++nUpdateCounter;
+}
+
 void CDB::Close()
 {
     if (!pdb)
@@ -346,8 +476,12 @@ bool CDBEnv::RemoveDb(const std::string& strFile)
     return (rc == 0);
 }
 
-bool CDB::Rewrite(const std::string& strFile, const char* pszSkip)
+bool CDB::Rewrite(CWalletDBWrapper& dbw, const char* pszSkip)
 {
+    if (dbw.IsDummy()) {
+        return true;
+    }
+    const std::string& strFile = dbw.strFile;
     while (true) {
         {
             LOCK(bitdb.cs_db);
@@ -361,7 +495,7 @@ bool CDB::Rewrite(const std::string& strFile, const char* pszSkip)
                 LogPrintf("CDB::Rewrite : Rewriting %s...\n", strFile);
                 std::string strFileRes = strFile + ".rewrite";
                 { // surround usage of db with extra {}
-                    CDB db(strFile.c_str(), "r");
+                    CDB db(dbw, "r");
                     Db* pdbCopy = new Db(bitdb.dbenv, 0);
 
                     int ret = pdbCopy->open(NULL, // Txn pointer
@@ -468,4 +602,90 @@ void CDBEnv::Flush(bool fShutdown)
             }
         }
     }
+}
+
+bool CDB::PeriodicFlush(CWalletDBWrapper& dbw)
+{
+    if (dbw.IsDummy()) {
+        return true;
+    }
+    bool ret = false;
+    const std::string& strFile = dbw.strFile;
+    TRY_LOCK(bitdb.cs_db,lockDb);
+    if (lockDb)
+    {
+        // Don't do this if any databases are in use
+        int nRefCount = 0;
+        std::map<std::string, int>::iterator mi = bitdb.mapFileUseCount.begin();
+        while (mi != bitdb.mapFileUseCount.end())
+        {
+            nRefCount += (*mi).second;
+            mi++;
+        }
+
+        if (nRefCount == 0)
+        {
+            boost::this_thread::interruption_point();
+            std::map<std::string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
+            if (mi != bitdb.mapFileUseCount.end())
+            {
+                LogPrint("db", "Flushing %s\n", strFile);
+                int64_t nStart = GetTimeMillis();
+
+                // Flush wallet file so it's self contained
+                bitdb.CloseDb(strFile);
+                bitdb.CheckpointLSN(strFile);
+
+                bitdb.mapFileUseCount.erase(mi++);
+                LogPrint("db", "Flushed %s %dms\n", strFile, GetTimeMillis() - nStart);
+                ret = true;
+            }
+        }
+    }
+
+    return ret;
+}
+
+bool CWalletDBWrapper::Rewrite(const char* pszSkip)
+{
+    return CDB::Rewrite(*this, pszSkip);
+}
+
+bool CWalletDBWrapper::Backup(const std::string& strDest)
+{
+    if (IsDummy()) {
+        return false;
+    }
+    while (true)
+    {
+        {
+            LOCK(bitdb.cs_db);
+            if (!bitdb.mapFileUseCount.count(strFile) || bitdb.mapFileUseCount[strFile] == 0)
+            {
+                // Flush log data to the dat file
+                bitdb.CloseDb(strFile);
+                bitdb.CheckpointLSN(strFile);
+                printf("Issuing lsn_reset for backup file portability.\n");
+                bitdb.lsn_reset(strFile);
+                bitdb.mapFileUseCount.erase(strFile);
+
+                // Copy wallet file
+                boost::filesystem::path pathSrc = GetDataDir() / strFile;
+                boost::filesystem::path pathDest(strDest);
+                if (boost::filesystem::is_directory(pathDest))
+                    pathDest /= strFile;
+
+                try {
+                    boost::filesystem::copy_file(pathSrc, pathDest, boost::filesystem::copy_option::overwrite_if_exists);
+                    LogPrintf("copied %s to %s\n", strFile, pathDest.string());
+                    return true;
+                } catch (const boost::filesystem::filesystem_error& e) {
+                    LogPrintf("error copying %s to %s - %s\n", strFile, pathDest.string(), e.what());
+                    return false;
+                }
+            }
+        }
+        MilliSleep(100);
+    }
+    return false;
 }

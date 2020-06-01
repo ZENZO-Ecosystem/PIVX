@@ -46,6 +46,7 @@ TestingSetup::TestingSetup()
 {
 #ifdef ENABLE_WALLET
         bitdb.MakeMock();
+        walletRegisterRPCCommands();
 #endif
         ClearDatadirCache();
         pathTemp = GetTempPath() / strprintf("test_pivx_%lu_%i", (unsigned long)GetTime(), (int)(InsecureRandRange(100000)));
@@ -87,7 +88,7 @@ TestingSetup::~TestingSetup()
         delete pcoinsdbview;
         delete pblocktree;
 #ifdef ENABLE_WALLET
-        bitdb.Flush(true);
+        pwalletMain->Flush(true);
         bitdb.Reset();
 #endif
         boost::filesystem::remove_all(pathTemp);

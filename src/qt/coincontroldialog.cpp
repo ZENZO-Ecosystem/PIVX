@@ -810,8 +810,9 @@ void CoinControlDialog::updateView()
         double dPrioritySum = 0;
         int nChildren = 0;
         int nInputSum = 0;
+        // This *REALLY* needs updating to support multiwallets
         for(const COutput& out: coins.second) {
-            isminetype mine = pwalletMain->IsMine(out.tx->vout[out.i]);
+            isminetype mine = vpwallets.front()->IsMine(out.tx->vout[out.i]);
             bool fMultiSigUTXO = (mine & ISMINE_MULTISIG);
             // when multisig is enabled, it will only display outputs from multisig addresses
             if (fMultisigEnabled && !fMultiSigUTXO)

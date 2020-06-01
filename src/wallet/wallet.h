@@ -27,6 +27,7 @@
 #include "validationinterface.h"
 #include "wallet/wallet_ismine.h"
 #include "wallet/walletdb.h"
+#include "wallet/rpcwallet.h"
 #include "zpiv/zpivmodule.h"
 #include "zpiv/zpivwallet.h"
 #include "zpiv/zpivtracker.h"
@@ -39,6 +40,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <boost/thread.hpp>
+
+typedef CWallet* CWalletRef;
+extern std::vector<CWalletRef> vpwallets;
 
 /**
  * Settings
@@ -254,7 +259,8 @@ private:
     void SyncMetaData(std::pair<TxSpends::iterator, TxSpends::iterator>);
     /* HD derive new child key (on internal or external chain) */
     void DeriveNewChildKey(const CKeyMetadata& metadata, CKey& secretRet, uint32_t nAccountIndex, bool fInternal /*= false*/);
-
+    
+    std::unique_ptr<CWalletDBWrapper> dbw;
 
 public:
 
@@ -268,16 +274,30 @@ public:
 
     /*
      * Main wallet lock.
-     * This lock protects all the fields added by CWallet
-     *   except for:
-     *      fFileBacked (immutable after instantiation)
-     *      strWalletFile (immutable after instantiation)
+     * This lock protects all the fields added by CWallet.
      */
     mutable RecursiveMutex cs_wallet;
 
-    bool fFileBacked;
     bool fWalletUnlockStaking;
-    std::string strWalletFile;
+
+    /** Get database handle used by this wallet. Ideally this function would
+     * not be necessary.
+     */
+    CWalletDBWrapper& GetDBHandle()
+    {
+        return *dbw;
+    }
+
+    /** Get a name for this wallet for logging/debugging purposes.
+     */
+    std::string GetName() const
+    {
+        if (dbw) {
+            return dbw->GetName();
+        } else {
+            return "dummy";
+        }
+    }
 
     void LoadKeyPool(int nIndex, const CKeyPool &keypool)
     {
@@ -322,8 +342,12 @@ public:
     bool fCombineDust;
     CAmount nAutoCombineThreshold;
 
-    CWallet();
-    CWallet(std::string strWalletFileIn);
+    // Create wallet with dummy database handle
+    CWallet(): dbw(new CWalletDBWrapper()){};
+
+    // Create wallet with passed-in database handle
+    CWallet(std::unique_ptr<CWalletDBWrapper> dbw_in) : dbw(std::move(dbw_in)){};
+
     ~CWallet();
     void SetNull();
     bool isMultiSendEnabled();
@@ -337,6 +361,7 @@ public:
     TxItems wtxOrdered;
 
     int64_t nOrderPosNext;
+    uint64_t nAccountingEntryNumber;
     std::map<uint256, int> mapRequestCount;
 
     std::map<CTxDestination, AddressBook::CAddressBookData> mapAddressBook;
@@ -430,7 +455,9 @@ public:
     bool RemoveMultiSig(const CScript& dest);
     //! Adds a MultiSig address to the store, without saving it to disk (used by LoadWallet)
     bool LoadMultiSig(const CScript& dest);
-
+    
+    //! Holds a timestamp at which point the wallet is scheduled (externally) to be relocked. Caller must arrange for actual relocking to occur via Lock().
+    int64_t nRelockTime;
     //! Lock Wallet
     bool Lock();
     bool Unlock(const SecureString& strWalletPassphrase, bool anonimizeOnly = false);
@@ -446,9 +473,11 @@ public:
      * @return next transaction order id
      */
     int64_t IncOrderPosNext(CWalletDB* pwalletdb = NULL);
+    bool AccountMove(std::string strFrom, std::string strTo, CAmount nAmount, std::string strComment = "");
 
     void MarkDirty();
-    bool AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb);
+    bool AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose=true);
+    bool LoadToWallet(const CWalletTx& wtxIn);
     void SyncTransaction(const CTransaction& tx, const CBlock* pblock);
     bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate);
     void EraseFromWallet(const uint256& hash);
@@ -488,7 +517,8 @@ public:
         bool fIncludeDelegated = false);
     bool CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl = NULL, AvailableCoinsType coin_type = ALL_COINS, bool useIX = false, CAmount nFeePay = 0, bool fIncludeDelegated = false);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std::string strCommand = "tx");
-    bool AddAccountingEntry(const CAccountingEntry&, CWalletDB & pwalletdb);
+    bool AddAccountingEntry(const CAccountingEntry&);
+    bool AddAccountingEntry(const CAccountingEntry&, CWalletDB *pwalletdb);
     int GenerateObfuscationOutputs(int nTotalValue, std::vector<CTxOut>& vout);
     bool CreateCoinStake(const CKeyStore& keystore, const CBlockIndex* pindexPrev, unsigned int nBits, CMutableTransaction& txNew, int64_t& nTxNewTime);
     bool MultiSend();
@@ -584,6 +614,25 @@ public:
     /* Mark a transaction (and it in-wallet descendants) as abandoned so its inputs may be respent. */
     bool AbandonTransaction(const uint256& hashTx);
 
+    /* initializes the wallet, returns a new CWallet instance or a null pointer in case of an error */
+    static CWallet* CreateWalletFromFile(const std::vector<std::string>& words, const std::string walletFile);
+    static bool InitLoadWallet(const std::vector<std::string>& words);
+
+    /**
+    * Wallet post-init setup
+    * Gives the wallet a chance to register repetitive tasks and complete post-init tasks
+    */
+    void postInitProcess(boost::thread_group& threadGroup);
+
+    /* Wallets parameter interaction */
+    static bool ParameterInteraction();
+
+    //! Flush wallet (bitdb flush)
+    void Flush(bool shutdown=false);
+
+    //! Verify the wallet database and perform salvage if required
+    static bool Verify();
+
     /**
      * Address book entry changed.
      * @note called with lock cs_wallet held.
@@ -661,6 +710,8 @@ public:
     boost::signals2::signal<void(CWallet* wallet, const std::string& pubCoin, const std::string& isUsed, ChangeType status)> NotifyZerocoinChanged;
     // zPIV reset
     boost::signals2::signal<void()> NotifyzPIVReset;
+
+    bool BackupWallet(const std::string& strDest);
 };
 
 

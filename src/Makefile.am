@@ -117,6 +117,7 @@ BITCOIN_CORE_H = \
   obfuscation.h \
   obfuscation-relay.h \
   wallet/db.h \
+  wallet/rpcwallet.h \
   hash.h \
   wallet/hdchain.h \
   httprpc.h \

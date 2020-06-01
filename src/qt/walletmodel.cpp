@@ -734,7 +734,7 @@ bool WalletModel::changePassphrase(const SecureString& oldPass, const SecureStri
 bool WalletModel::backupWallet(const QString& filename)
 {
     //attempt regular backup
-    if(!BackupWallet(*wallet, filename.toLocal8Bit().data())) {
+    if(!wallet->BackupWallet(filename.toLocal8Bit().data())) {
         return error("ERROR: Failed to backup wallet!");
     }
 
@@ -751,7 +751,7 @@ static void NotifyKeyStoreStatusChanged(WalletModel* walletmodel, CCryptoKeyStor
 
 static void NotifyAddressBookChanged(WalletModel* walletmodel, CWallet* wallet, const CTxDestination& address, const std::string& label, bool isMine, const std::string& purpose, ChangeType status)
 {
-    QString strAddress = QString::fromStdString(pwalletMain->ParseIntoAddress(address, purpose).ToString());
+    QString strAddress = QString::fromStdString(vpwallets.front()->ParseIntoAddress(address, purpose).ToString());
     QString strLabel = QString::fromStdString(label);
     QString strPurpose = QString::fromStdString(purpose);
 
@@ -921,12 +921,12 @@ int64_t WalletModel::getCreationTime() const {
 }
 
 int64_t WalletModel::getKeyCreationTime(const CPubKey& key){
-    return pwalletMain->GetKeyCreationTime(key);
+    return vpwallets.front()->GetKeyCreationTime(key);
 }
 
 int64_t WalletModel::getKeyCreationTime(const CBitcoinAddress& address){
     if(this->isMine(address)) {
-        return pwalletMain->GetKeyCreationTime(address);
+        return vpwallets.front()->GetKeyCreationTime(address);
     }
     return 0;
 }
@@ -954,7 +954,7 @@ bool WalletModel::updateAddressBookPurpose(const QString &addressStr, const std:
     CKeyID keyID;
     if (!getKeyId(address, keyID))
         return false;
-    return pwalletMain->SetAddressBook(keyID, getLabelForAddress(address), purpose);
+    return vpwallets.front()->SetAddressBook(keyID, getLabelForAddress(address), purpose);
 }
 
 bool WalletModel::getKeyId(const CBitcoinAddress& address, CKeyID& keyID) {
@@ -1064,7 +1064,7 @@ void WalletModel::listLockedCoins(std::vector<COutPoint>& vOutpts)
 void WalletModel::listZerocoinMints(std::set<CMintMeta>& setMints, bool fUnusedOnly, bool fMaturedOnly, bool fUpdateStatus, bool fWrongSeed)
 {
     setMints.clear();
-    setMints = pwalletMain->zpivTracker->ListMints(fUnusedOnly, fMaturedOnly, fUpdateStatus, fWrongSeed);
+    setMints = vpwallets.front()->zpivTracker->ListMints(fUnusedOnly, fMaturedOnly, fUpdateStatus, fWrongSeed);
 }
 
 void WalletModel::loadReceiveRequests(std::vector<std::string>& vReceiveRequests)

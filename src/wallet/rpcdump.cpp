@@ -15,6 +15,7 @@
 #include "utilstrencodings.h"
 #include "utiltime.h"
 #include "wallet/wallet.h"
+#include "wallet/rpcwallet.h"
 
 #include <fstream>
 #include <secp256k1.h>
@@ -24,7 +25,6 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <univalue.h>
-
 
 std::string static EncodeDumpTime(int64_t nTime)
 {
@@ -73,13 +73,17 @@ std::string DecodeDumpString(const std::string& str)
     return ret.str();
 }
 
-UniValue importprivkey(const UniValue& params, bool fHelp)
+UniValue importprivkey(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 4)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 4)
         throw std::runtime_error(
             "importprivkey \"pivxprivkey\" ( \"label\" rescan fStakingAddress )\n"
             "\nAdds a private key (as returned by dumpprivkey) to your wallet.\n" +
-            HelpRequiringPassphrase() + "\n"
+            HelpRequiringPassphrase(pwallet) + "\n"
 
             "\nArguments:\n"
             "1. \"pivxprivkey\"      (string, required) The private key (see dumpprivkey)\n"
@@ -99,10 +103,10 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
             "\nAs a JSON-RPC call\n" +
             HelpExampleRpc("importprivkey", "\"mykey\", \"testing\", false"));
 
-    const std::string strSecret = params[0].get_str();
-    const std::string strLabel = (params.size() > 1 ? params[1].get_str() : "");
-    const bool fRescan = (params.size() > 2 ? params[2].get_bool() : true);
-    const bool fStakingAddress = (params.size() > 3 ? params[3].get_bool() : false);
+    const std::string strSecret = request.params[0].get_str();
+    const std::string strLabel = (request.params.size() > 1 ? request.params[1].get_str() : "");
+    const bool fRescan = (request.params.size() > 2 ? request.params[2].get_bool() : true);
+    const bool fStakingAddress = (request.params.size() > 3 ? request.params[3].get_bool() : false);
 
     CBitcoinSecret vchSecret;
     if (!vchSecret.SetString(strSecret))
@@ -116,26 +120,26 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     assert(key.VerifyPubKey(pubkey));
     CKeyID vchAddress = pubkey.GetID();
     {
-        LOCK2(cs_main, pwalletMain->cs_wallet);
-        EnsureWalletIsUnlocked();
+        LOCK2(cs_main, pwallet->cs_wallet);
+        EnsureWalletIsUnlocked(pwallet, false);
 
-        pwalletMain->MarkDirty();
-        pwalletMain->SetAddressBook(vchAddress, strLabel, (
+        pwallet->MarkDirty();
+        pwallet->SetAddressBook(vchAddress, strLabel, (
                 fStakingAddress ?
                         AddressBook::AddressBookPurpose::COLD_STAKING :
                         AddressBook::AddressBookPurpose::RECEIVE));
 
         // Don't throw error in case a key is already there
-        if (pwalletMain->HaveKey(vchAddress))
+        if (pwallet->HaveKey(vchAddress))
             return NullUniValue;
 
-        pwalletMain->mapKeyMetadata[vchAddress].nCreateTime = 1;
+        pwallet->mapKeyMetadata[vchAddress].nCreateTime = 1;
 
-        if (!pwalletMain->AddKeyPubKey(key, pubkey))
+        if (!pwallet->AddKeyPubKey(key, pubkey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
 
         // whenever a key is imported, we need to scan the whole chain
-        pwalletMain->nTimeFirstKey = 1; // 0 would be considered 'no value'
+        pwallet->nTimeFirstKey = 1; // 0 would be considered 'no value'
 
         if (fRescan) {
             CBlockIndex *pindex = chainActive.Genesis();
@@ -143,19 +147,23 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
                 // cold staking was activated after nBlockTimeProtocolV2. No need to scan the whole chain
                 pindex = chainActive[Params().GetConsensus().height_start_TimeProtoV2];
             }
-            pwalletMain->ScanForWalletTransactions(pindex, true);
+            pwallet->ScanForWalletTransactions(pindex, true);
         }
     }
 
     return NullUniValue;
 }
 
-UniValue dumphdinfo(const UniValue& params, bool fHelp)
+UniValue dumphdinfo(const JSONRPCRequest& request)
 {
-    if (pwalletMain == NULL)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (pwallet == NULL)
         return false;
 
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw std::runtime_error(
                 "dumphdinfo\n"
                 "Returns an object containing sensitive private info about this HD wallet.\n"
@@ -170,15 +178,15 @@ UniValue dumphdinfo(const UniValue& params, bool fHelp)
                 + HelpExampleRpc("dumphdinfo", "")
         );
 
-    LOCK(pwalletMain->cs_wallet);
+    LOCK(pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    EnsureWalletIsUnlocked(pwallet, false);
 
     CHDChain hdChainCurrent;
-    if (!pwalletMain->GetHDChain(hdChainCurrent))
+    if (!pwallet->GetHDChain(hdChainCurrent))
         throw JSONRPCError(RPC_WALLET_ERROR, "This wallet is not a HD wallet.");
 
-    if (!pwalletMain->GetDecryptedHDChain(hdChainCurrent))
+    if (!pwallet->GetDecryptedHDChain(hdChainCurrent))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot decrypt HD seed");
 
     SecureString ssMnemonic;
@@ -194,9 +202,13 @@ UniValue dumphdinfo(const UniValue& params, bool fHelp)
 }
 
 
-UniValue importaddress(const UniValue& params, bool fHelp)
+UniValue importaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 3)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 3)
         throw std::runtime_error(
             "importaddress \"address\" ( \"label\" rescan )\n"
             "\nAdds an address or script (in hex) that can be watched as if it were in your wallet but cannot be used to spend.\n"
@@ -216,53 +228,53 @@ UniValue importaddress(const UniValue& params, bool fHelp)
             "\nAs a JSON-RPC call\n" +
             HelpExampleRpc("importaddress", "\"myaddress\", \"testing\", false"));
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, pwallet->cs_wallet);
 
     CScript script;
 
-    CBitcoinAddress address(params[0].get_str());
+    CBitcoinAddress address(request.params[0].get_str());
     if (address.IsValid()) {
         script = GetScriptForDestination(address.Get());
-    } else if (IsHex(params[0].get_str())) {
-        std::vector<unsigned char> data(ParseHex(params[0].get_str()));
+    } else if (IsHex(request.params[0].get_str())) {
+        std::vector<unsigned char> data(ParseHex(request.params[0].get_str()));
         script = CScript(data.begin(), data.end());
     } else {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid PIVX address or script");
     }
 
     std::string strLabel = "";
-    if (params.size() > 1)
-        strLabel = params[1].get_str();
+    if (request.params.size() > 1)
+        strLabel = request.params[1].get_str();
 
     // Whether to perform rescan after import
     bool fRescan = true;
-    if (params.size() > 2)
-        fRescan = params[2].get_bool();
+    if (request.params.size() > 2)
+        fRescan = request.params[2].get_bool();
 
     {
-        if (::IsMine(*pwalletMain, script) & ISMINE_SPENDABLE_ALL)
+        if (::IsMine(*pwallet, script) & ISMINE_SPENDABLE_ALL)
             throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
 
         // add to address book or update label
         if (address.IsValid()) {
-            pwalletMain->SetAddressBook(address.Get(), strLabel,
+            pwallet->SetAddressBook(address.Get(), strLabel,
                     (address.IsStakingAddress() ?
                             AddressBook::AddressBookPurpose::COLD_STAKING :
                             AddressBook::AddressBookPurpose::RECEIVE));
         }
 
         // Don't throw error in case an address is already there
-        if (pwalletMain->HaveWatchOnly(script))
+        if (pwallet->HaveWatchOnly(script))
             return NullUniValue;
 
-        pwalletMain->MarkDirty();
+        pwallet->MarkDirty();
 
-        if (!pwalletMain->AddWatchOnly(script))
+        if (!pwallet->AddWatchOnly(script))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding address to wallet");
 
         if (fRescan) {
-            pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
-            pwalletMain->ReacceptWalletTransactions();
+            pwallet->ScanForWalletTransactions(chainActive.Genesis(), true);
+            pwallet->ReacceptWalletTransactions();
         }
     }
 
@@ -270,13 +282,17 @@ UniValue importaddress(const UniValue& params, bool fHelp)
 }
 
 // TODO: Needs further review over the HD flow, staking addresses and multisig import.
-UniValue importwallet(const UniValue& params, bool fHelp)
+UniValue importwallet(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "importwallet \"filename\"\n"
             "\nImports keys from a wallet dump file (see dumpwallet).\n" +
-            HelpRequiringPassphrase() + "\n"
+            HelpRequiringPassphrase(pwallet) + "\n"
 
             "\nArguments:\n"
             "1. \"filename\"    (string, required) The wallet file\n"
@@ -289,12 +305,12 @@ UniValue importwallet(const UniValue& params, bool fHelp)
             "\nImport using the json rpc call\n" +
             HelpExampleRpc("importwallet", "\"test\""));
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    EnsureWalletIsUnlocked(pwallet, false);
 
     std::ifstream file;
-    file.open(params[0].get_str().c_str(), std::ios::in | std::ios::ate);
+    file.open(request.params[0].get_str().c_str(), std::ios::in | std::ios::ate);
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
 
@@ -305,9 +321,9 @@ UniValue importwallet(const UniValue& params, bool fHelp)
     int64_t nFilesize = std::max((int64_t)1, (int64_t)file.tellg());
     file.seekg(0, file.beg);
 
-    pwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
+    pwallet->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
     while (file.good()) {
-        pwalletMain->ShowProgress("", std::max(1, std::min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
+        pwallet->ShowProgress("", std::max(1, std::min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
         std::string line;
         std::getline(file, line);
         if (line.empty() || line[0] == '#')
@@ -324,7 +340,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
         CPubKey pubkey = key.GetPubKey();
         assert(key.VerifyPubKey(pubkey));
         CKeyID keyid = pubkey.GetID();
-        if (pwalletMain->HaveKey(keyid)) {
+        if (pwallet->HaveKey(keyid)) {
             LogPrintf("Skipping import of %s (key already present)\n", CBitcoinAddress(keyid).ToString());
             continue;
         }
@@ -347,28 +363,28 @@ UniValue importwallet(const UniValue& params, bool fHelp)
             }
         }
         LogPrintf("Importing %s...\n", CBitcoinAddress(keyid).ToString());
-        if (!pwalletMain->AddKeyPubKey(key, pubkey)) {
+        if (!pwallet->AddKeyPubKey(key, pubkey)) {
             fGood = false;
             continue;
         }
-        pwalletMain->mapKeyMetadata[keyid].nCreateTime = nTime;
+        pwallet->mapKeyMetadata[keyid].nCreateTime = nTime;
         if (fLabel) // TODO: This is not entirely true.. needs to be reviewed properly.
-            pwalletMain->SetAddressBook(keyid, strLabel, AddressBook::AddressBookPurpose::RECEIVE);
+            pwallet->SetAddressBook(keyid, strLabel, AddressBook::AddressBookPurpose::RECEIVE);
         nTimeBegin = std::min(nTimeBegin, nTime);
     }
     file.close();
-    pwalletMain->ShowProgress("", 100); // hide progress dialog in GUI
+    pwallet->ShowProgress("", 100); // hide progress dialog in GUI
 
     CBlockIndex* pindex = chainActive.Tip();
     while (pindex && pindex->pprev && pindex->GetBlockTime() > nTimeBegin - 7200)
         pindex = pindex->pprev;
 
-    if (!pwalletMain->nTimeFirstKey || nTimeBegin < pwalletMain->nTimeFirstKey)
-        pwalletMain->nTimeFirstKey = nTimeBegin;
+    if (!pwallet->nTimeFirstKey || nTimeBegin < pwallet->nTimeFirstKey)
+        pwallet->nTimeFirstKey = nTimeBegin;
 
     LogPrintf("Rescanning last %i blocks\n", chainActive.Height() - pindex->nHeight + 1);
-    pwalletMain->ScanForWalletTransactions(pindex);
-    pwalletMain->MarkDirty();
+    pwallet->ScanForWalletTransactions(pindex);
+    pwallet->MarkDirty();
 
     if (!fGood)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error adding some keys to wallet");
@@ -376,14 +392,18 @@ UniValue importwallet(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue dumpprivkey(const UniValue& params, bool fHelp)
+UniValue dumpprivkey(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "dumpprivkey \"pivxaddress\"\n"
             "\nReveals the private key corresponding to 'pivxaddress'.\n"
             "Then the importprivkey can be used with this output\n" +
-            HelpRequiringPassphrase() + "\n"
+            HelpRequiringPassphrase(pwallet) + "\n"
 
             "\nArguments:\n"
             "1. \"pivxaddress\"   (string, required) The pivx address for the private key\n"
@@ -394,11 +414,11 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("dumpprivkey", "\"myaddress\"") + HelpExampleCli("importprivkey", "\"mykey\"") + HelpExampleRpc("dumpprivkey", "\"myaddress\""));
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    EnsureWalletIsUnlocked(pwallet, false);
 
-    std::string strAddress = params[0].get_str();
+    std::string strAddress = request.params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid PIVX address");
@@ -406,18 +426,22 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
     CKey vchSecret;
-    if (!pwalletMain->GetKey(keyID, vchSecret))
+    if (!pwallet->GetKey(keyID, vchSecret))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
     return CBitcoinSecret(vchSecret).ToString();
 }
 
-UniValue dumpwallet(const UniValue& params, bool fHelp)
+UniValue dumpwallet(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "dumpwallet \"filename\"\n"
             "\nDumps all wallet keys in a human-readable format to a server-side file. This does not allow overwriting existing files.\n" +
-            HelpRequiringPassphrase() + "\n"
+            HelpRequiringPassphrase(pwallet) + "\n"
 
             "\nArguments:\n"
             "1. \"filename\"    (string, required) The filename\n"
@@ -425,22 +449,22 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("dumpwallet", "\"test\"") + HelpExampleRpc("dumpwallet", "\"test\""));
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    EnsureWalletIsUnlocked(pwallet, false);
 
-    boost::filesystem::path filepath = params[0].get_str().c_str();
+    boost::filesystem::path filepath = request.params[0].get_str().c_str();
     filepath = boost::filesystem::absolute(filepath);
 
     std::ofstream file;
-    file.open(params[0].get_str().c_str());
+    file.open(request.params[0].get_str().c_str());
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
 
     std::map<CKeyID, int64_t> mapKeyBirth;
     std::set<CKeyID> setKeyPool;
-    pwalletMain->GetKeyBirthTimes(mapKeyBirth);
-    pwalletMain->GetAllReserveKeys(setKeyPool);
+    pwallet->GetKeyBirthTimes(mapKeyBirth);
+    pwallet->GetAllReserveKeys(setKeyPool);
 
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
@@ -452,7 +476,7 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
 
     CBlockIndex* tip = chainActive.Tip();
     // produce output
-    file << strprintf("# Wallet dump created by PIVX %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
+    file << strprintf("# Wallet dump created by ZENZO %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
     if (tip) {
         file << strprintf("# * Best block at time of backup was %i (%s),\n", tip->nHeight,
@@ -464,9 +488,9 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
     file << "\n";
     // add the base58check encoded extended master if the wallet uses HD
     CHDChain hdChainCurrent;
-    if (pwalletMain->GetHDChain(hdChainCurrent))
+    if (pwallet->GetHDChain(hdChainCurrent))
     {
-        if (!pwalletMain->GetDecryptedHDChain(hdChainCurrent))
+        if (!pwallet->GetDecryptedHDChain(hdChainCurrent))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot decrypt HD chain");
 
         SecureString ssMnemonic;
@@ -502,14 +526,14 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
         std::string strTime = EncodeDumpTime(it->first);
         std::string strAddr = CBitcoinAddress(keyid).ToString();
         CKey key;
-        if (pwalletMain->GetKey(keyid, key)) {
+        if (pwallet->GetKey(keyid, key)) {
             file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
-            if (pwalletMain->mapAddressBook.count(keyid)) {
-                file << strprintf("label=%s", EncodeDumpString(pwalletMain->mapAddressBook[keyid].name));
+            if (pwallet->mapAddressBook.count(keyid)) {
+                file << strprintf("label=%s", EncodeDumpString(pwallet->mapAddressBook[keyid].name));
             } else if (setKeyPool.count(keyid)) {
                 file << "reserve=1";
             } else {
-                file << strprintf(" # addr=%s%s\n", strAddr, (pwalletMain->mapHdPubKeys.count(keyid) ? " hdkeypath="+pwalletMain->mapHdPubKeys[keyid].GetKeyPath() : ""));
+                file << strprintf(" # addr=%s%s\n", strAddr, (pwallet->mapHdPubKeys.count(keyid) ? " hdkeypath="+pwallet->mapHdPubKeys[keyid].GetKeyPath() : ""));
             }
         }
     }
@@ -523,13 +547,17 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
     return reply;
 }
 
-UniValue bip38encrypt(const UniValue& params, bool fHelp)
+UniValue bip38encrypt(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 2)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
             "bip38encrypt \"pivxaddress\" \"passphrase\"\n"
             "\nEncrypts a private key corresponding to 'pivxaddress'.\n" +
-            HelpRequiringPassphrase() + "\n"
+            HelpRequiringPassphrase(pwallet) + "\n"
 
             "\nArguments:\n"
             "1. \"pivxaddress\"   (string, required) The pivx address for the private key (you must hold the key already)\n"
@@ -542,12 +570,12 @@ UniValue bip38encrypt(const UniValue& params, bool fHelp)
             HelpExampleCli("bip38encrypt", "\"DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6\" \"mypasphrase\"") +
             HelpExampleRpc("bip38encrypt", "\"DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6\" \"mypasphrase\""));
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    EnsureWalletIsUnlocked(pwallet, false);
 
-    std::string strAddress = params[0].get_str();
-    std::string strPassphrase = params[1].get_str();
+    std::string strAddress = request.params[0].get_str();
+    std::string strPassphrase = request.params[1].get_str();
 
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
@@ -556,7 +584,7 @@ UniValue bip38encrypt(const UniValue& params, bool fHelp)
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
     CKey vchSecret;
-    if (!pwalletMain->GetKey(keyID, vchSecret))
+    if (!pwallet->GetKey(keyID, vchSecret))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
 
     uint256 privKey = vchSecret.GetPrivKey_256();
@@ -569,13 +597,17 @@ UniValue bip38encrypt(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue bip38decrypt(const UniValue& params, bool fHelp)
+UniValue bip38decrypt(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 2)
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
             "bip38decrypt \"pivxaddress\" \"passphrase\"\n"
             "\nDecrypts and then imports password protected private key.\n" +
-            HelpRequiringPassphrase() + "\n"
+            HelpRequiringPassphrase(pwallet) + "\n"
 
             "\nArguments:\n"
             "1. \"encryptedkey\"   (string, required) The encrypted private key\n"
@@ -588,13 +620,13 @@ UniValue bip38decrypt(const UniValue& params, bool fHelp)
             HelpExampleCli("bip38decrypt", "\"encryptedkey\" \"mypassphrase\"") +
             HelpExampleRpc("bip38decrypt", "\"encryptedkey\" \"mypassphrase\""));
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, pwallet->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    EnsureWalletIsUnlocked(pwallet, false);
 
     /** Collect private key and passphrase **/
-    std::string strKey = params[0].get_str();
-    std::string strPassphrase = params[1].get_str();
+    std::string strKey = request.params[0].get_str();
+    std::string strPassphrase = request.params[1].get_str();
 
     uint256 privKey;
     bool fCompressed;
@@ -616,21 +648,21 @@ UniValue bip38decrypt(const UniValue& params, bool fHelp)
     result.push_back(Pair("Address", CBitcoinAddress(pubkey.GetID()).ToString()));
     CKeyID vchAddress = pubkey.GetID();
     {
-        pwalletMain->MarkDirty();
-        pwalletMain->SetAddressBook(vchAddress, "", AddressBook::AddressBookPurpose::RECEIVE);
+        pwallet->MarkDirty();
+        pwallet->SetAddressBook(vchAddress, "", AddressBook::AddressBookPurpose::RECEIVE);
 
         // Don't throw error in case a key is already there
-        if (pwalletMain->HaveKey(vchAddress))
+        if (pwallet->HaveKey(vchAddress))
             throw JSONRPCError(RPC_WALLET_ERROR, "Key already held by wallet");
 
-        pwalletMain->mapKeyMetadata[vchAddress].nCreateTime = 1;
+        pwallet->mapKeyMetadata[vchAddress].nCreateTime = 1;
 
-        if (!pwalletMain->AddKeyPubKey(key, pubkey))
+        if (!pwallet->AddKeyPubKey(key, pubkey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
 
         // whenever a key is imported, we need to scan the whole chain
-        pwalletMain->nTimeFirstKey = 1; // 0 would be considered 'no value'
-        pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+        pwallet->nTimeFirstKey = 1; // 0 would be considered 'no value'
+        pwallet->ScanForWalletTransactions(chainActive.Genesis(), true);
     }
 
     return result;

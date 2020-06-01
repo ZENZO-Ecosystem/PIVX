@@ -21,13 +21,13 @@ MultiSendModel::MultiSendModel(QObject *parent) : QAbstractTableModel(parent){
 }
 
 void MultiSendModel::updateList(){
-    Q_EMIT dataChanged(index(0, 0, QModelIndex()), index((int) pwalletMain->vMultiSend.size(), 5, QModelIndex()) );
+    Q_EMIT dataChanged(index(0, 0, QModelIndex()), index((int) vpwallets.front()->vMultiSend.size(), 5, QModelIndex()) );
 }
 
 int MultiSendModel::rowCount(const QModelIndex &parent) const{
     if (parent.isValid())
         return 0;
-    return (int) pwalletMain->vMultiSend.size();
+    return (int) vpwallets.front()->vMultiSend.size();
 }
 
 QVariant MultiSendModel::data(const QModelIndex &index, int role) const {
@@ -38,9 +38,9 @@ QVariant MultiSendModel::data(const QModelIndex &index, int role) const {
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (index.column()) {
             case PERCENTAGE:
-                return pwalletMain->vMultiSend[row].second;
+                return vpwallets.front()->vMultiSend[row].second;
             case ADDRESS: {
-                return QString::fromStdString(pwalletMain->vMultiSend[row].first);
+                return QString::fromStdString(vpwallets.front()->vMultiSend[row].first);
             }
         }
     }
@@ -200,9 +200,9 @@ void SettingsMultisendWidget::loadWalletModel(){
         ui->listView->setModel(multiSendModel);
         ui->listView->setModelColumn(MultiSendModel::ADDRESS);
 
-        ui->pushLeft->setChecked(pwalletMain->isMultiSendEnabled());
-        ui->checkBoxStake->setChecked(pwalletMain->fMultiSendStake);
-        ui->checkBoxRewards->setChecked(pwalletMain->fMultiSendMasternodeReward);
+        ui->pushLeft->setChecked(vpwallets.front()->isMultiSendEnabled());
+        ui->checkBoxStake->setChecked(vpwallets.front()->fMultiSendStake);
+        ui->checkBoxRewards->setChecked(vpwallets.front()->fMultiSendMasternodeReward);
         connect(ui->checkBoxStake, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged()));
         connect(ui->checkBoxRewards, SIGNAL(stateChanged(int)), this, SLOT(checkBoxChanged()));
         connect(ui->pushLeft, SIGNAL(clicked()), this, SLOT(activate()));
@@ -229,13 +229,13 @@ void SettingsMultisendWidget::clearAll(){
         inform(tr("Cannot perform operation, wallet locked"));
         return;
     }
-    std::vector<std::pair<std::string, int> > vMultiSendTemp = pwalletMain->vMultiSend;
+    std::vector<std::pair<std::string, int> > vMultiSendTemp = vpwallets.front()->vMultiSend;
     bool fRemoved = true;
-    pwalletMain->vMultiSend.clear();
-    CWalletDB walletdb(pwalletMain->strWalletFile);
+    vpwallets.front()->vMultiSend.clear();
+    CWalletDB walletdb(vpwallets.front()->GetDBHandle());
     if (!walletdb.EraseMultiSend(vMultiSendTemp))
         fRemoved = false;
-    if (!walletdb.WriteMultiSend(pwalletMain->vMultiSend))
+    if (!walletdb.WriteMultiSend(vpwallets.front()->vMultiSend))
         fRemoved = false;
 
     checkBoxChanged();
@@ -245,8 +245,8 @@ void SettingsMultisendWidget::clearAll(){
 }
 
 void SettingsMultisendWidget::checkBoxChanged(){
-    pwalletMain->fMultiSendStake = ui->checkBoxStake->isChecked();
-    pwalletMain->fMultiSendMasternodeReward = ui->checkBoxRewards->isChecked();
+    vpwallets.front()->fMultiSendStake = ui->checkBoxStake->isChecked();
+    vpwallets.front()->fMultiSendMasternodeReward = ui->checkBoxRewards->isChecked();
 }
 
 void SettingsMultisendWidget::onAddRecipientClicked() {
@@ -283,8 +283,8 @@ void SettingsMultisendWidget::addMultiSend(QString address, int percentage, QStr
 
     int nMultiSendPercent = percentage;
     int nSumMultiSend = 0;
-    for (int i = 0; i < (int)pwalletMain->vMultiSend.size(); i++)
-        nSumMultiSend += pwalletMain->vMultiSend[i].second;
+    for (int i = 0; i < (int)vpwallets.front()->vMultiSend.size(); i++)
+        nSumMultiSend += vpwallets.front()->vMultiSend[i].second;
     if (nSumMultiSend + nMultiSendPercent > 100) {
         inform(tr("The total amount of your MultiSend vector is over 100% of your stake reward"));
         return;
@@ -292,7 +292,7 @@ void SettingsMultisendWidget::addMultiSend(QString address, int percentage, QStr
     std::pair<std::string, int> pMultiSend;
     pMultiSend.first = strAddress;
     pMultiSend.second = nMultiSendPercent;
-    pwalletMain->vMultiSend.push_back(pMultiSend);
+    vpwallets.front()->vMultiSend.push_back(pMultiSend);
 
     if (walletModel && walletModel->getAddressTableModel()) {
         // update the address book with the label given or no label if none was given.
@@ -302,8 +302,8 @@ void SettingsMultisendWidget::addMultiSend(QString address, int percentage, QStr
                 AddressBook::AddressBookPurpose::SEND);
     }
 
-    CWalletDB walletdb(pwalletMain->strWalletFile);
-    if(!walletdb.WriteMultiSend(pwalletMain->vMultiSend)) {
+    CWalletDB walletdb(vpwallets.front()->GetDBHandle());
+    if(!walletdb.WriteMultiSend(vpwallets.front()->vMultiSend)) {
         inform(tr("Error saving  MultiSend, failed saving properties to the database."));
         return;
     }
@@ -314,19 +314,19 @@ void SettingsMultisendWidget::addMultiSend(QString address, int percentage, QStr
 }
 
 void SettingsMultisendWidget::activate(){
-    if(pwalletMain->isMultiSendEnabled())
+    if(vpwallets.front()->isMultiSendEnabled())
         return;
     QString strRet;
-    if (pwalletMain->vMultiSend.size() < 1)
+    if (vpwallets.front()->vMultiSend.size() < 1)
         strRet = tr("Unable to activate MultiSend, no available recipients");
     else if (!(ui->checkBoxStake->isChecked() || ui->checkBoxRewards->isChecked())) {
         strRet = tr("Unable to activate MultiSend\nCheck one or both of the check boxes to send on stake and/or masternode rewards");
-    } else if (CBitcoinAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
-        pwalletMain->fMultiSendStake = ui->checkBoxStake->isChecked();
-        pwalletMain->fMultiSendMasternodeReward = ui->checkBoxRewards->isChecked();
+    } else if (CBitcoinAddress(vpwallets.front()->vMultiSend[0].first).IsValid()) {
+        vpwallets.front()->fMultiSendStake = ui->checkBoxStake->isChecked();
+        vpwallets.front()->fMultiSendMasternodeReward = ui->checkBoxRewards->isChecked();
 
-        CWalletDB walletdb(pwalletMain->strWalletFile);
-        if (!walletdb.WriteMSettings(pwalletMain->fMultiSendStake, pwalletMain->fMultiSendMasternodeReward, pwalletMain->nLastMultiSendHeight))
+        CWalletDB walletdb(vpwallets.front()->GetDBHandle());
+        if (!walletdb.WriteMSettings(vpwallets.front()->fMultiSendStake, vpwallets.front()->fMultiSendMasternodeReward, vpwallets.front()->nLastMultiSendHeight))
             strRet = tr("MultiSend activated but writing settings to DB failed");
         else
             strRet = tr("MultiSend activated");
@@ -337,11 +337,11 @@ void SettingsMultisendWidget::activate(){
 }
 
 void SettingsMultisendWidget::deactivate(){
-    if(pwalletMain->isMultiSendEnabled()) {
+    if(vpwallets.front()->isMultiSendEnabled()) {
         QString strRet;
-        pwalletMain->setMultiSendDisabled();
-        CWalletDB walletdb(pwalletMain->strWalletFile);
-        inform(!walletdb.WriteMSettings(false, false, pwalletMain->nLastMultiSendHeight) ?
+        vpwallets.front()->setMultiSendDisabled();
+        CWalletDB walletdb(vpwallets.front()->GetDBHandle());
+        inform(!walletdb.WriteMSettings(false, false, vpwallets.front()->nLastMultiSendHeight) ?
                tr("MultiSend deactivated but writing settings to DB failed") :
                tr("MultiSend deactivated")
         );

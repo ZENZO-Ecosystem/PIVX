@@ -124,7 +124,7 @@ void OptionsModel::setWalletDefaultOptions(QSettings& settings, bool reset){
         addOverriddenOption("-spendzeroconfchange");
 
     if (reset){
-        setStakeSplitThreshold(CWallet::DEFAULT_STAKE_SPLIT_THRESHOLD);
+        setStakeSplitThreshold(2000);
         refreshDataView();
     }
 }
@@ -255,7 +255,7 @@ QVariant OptionsModel::data(const QModelIndex& index, int role) const
         case StakeSplitThreshold:
         {
             // Return CAmount/qlonglong as double
-            const CAmount nStakeSplitThreshold = (pwalletMain) ? pwalletMain->nStakeSplitThreshold : CWallet::DEFAULT_STAKE_SPLIT_THRESHOLD;
+            const CAmount nStakeSplitThreshold = (!vpwallets.empty()) ? vpwallets.front()->nStakeSplitThreshold : CWallet::DEFAULT_STAKE_SPLIT_THRESHOLD;
             return QVariant(static_cast<double>(nStakeSplitThreshold / static_cast<double>(COIN)));
         }
 #endif
@@ -450,12 +450,12 @@ void OptionsModel::setDisplayUnit(const QVariant& value)
 /* Update StakeSplitThreshold's value in wallet */
 void OptionsModel::setStakeSplitThreshold(const CAmount nStakeSplitThreshold)
 {
-    if (pwalletMain && pwalletMain->nStakeSplitThreshold != nStakeSplitThreshold) {
-        CWalletDB walletdb(pwalletMain->strWalletFile);
-        LOCK(pwalletMain->cs_wallet);
+    if (!vpwallets.empty() && vpwallets.front()->nStakeSplitThreshold != nStakeSplitThreshold) {
+        CWalletDB walletdb(vpwallets.front()->GetDBHandle());
+        LOCK(vpwallets.front()->cs_wallet);
         {
-            pwalletMain->nStakeSplitThreshold = nStakeSplitThreshold;
-            if (pwalletMain->fFileBacked)
+            vpwallets.front()->nStakeSplitThreshold = nStakeSplitThreshold;
+            if (vpwallets.front()->fFileBacked)
                 walletdb.WriteStakeSplitThreshold(nStakeSplitThreshold);
         }
     }

@@ -137,6 +137,8 @@ inline bool IsSwitchChar(char c)
 #endif
 }
 
+std::vector<std::string> GetArgs(const std::string& strArg);
+
 /**
  * Return string argument or default value
  *

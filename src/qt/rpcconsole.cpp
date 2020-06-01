@@ -229,9 +229,10 @@ void RPCExecutor::request(const QString& command)
         std::string strPrint;
         // Convert argument list to JSON objects in method-dependent way,
         // and pass it along with the method name to the dispatcher.
-        UniValue result = tableRPC.execute(
-            args[0],
-            RPCConvertValues(args[0], std::vector<std::string>(args.begin() + 1, args.end())));
+        JSONRPCRequest req;
+        req.params = RPCConvertValues(args[0], std::vector<std::string>(args.begin() + 1, args.end()));
+        req.strMethod = args.back();
+        UniValue result = tableRPC.execute(req);
 
         // Format result reply
         if (result.isNull())
@@ -608,10 +609,10 @@ void RPCConsole::walletUpgradeToHd()
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Cannot set a new HD seed while still in Initial Block Download");
     }
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, vpwallets.front()->cs_wallet);
 
     // Do not do anything to HD wallets
-    if (pwalletMain->IsHDEnabled()) {
+    if (vpwallets.front()->IsHDEnabled()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Cannot upgrade a wallet to hd if It is already upgraded to hd.");
     }
 
@@ -619,33 +620,33 @@ void RPCConsole::walletUpgradeToHd()
     SecureString strWalletPass;
     strWalletPass.reserve(100);
 
-    int prev_version = pwalletMain->GetVersion();
+    int prev_version = vpwallets.front()->GetVersion();
 
     int nMaxVersion = GetArg("-upgradewallet", 0);
     if (nMaxVersion == 0) // the -upgradewallet without argument case
     {
         LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
         nMaxVersion = CLIENT_VERSION;
-        pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
+        vpwallets.front()->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
     } else
         LogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
-    if (nMaxVersion < pwalletMain->GetVersion()) {
+    if (nMaxVersion < vpwallets.front()->GetVersion()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Cannot downgrade wallet");
     }
 
-    pwalletMain->SetMaxVersion(nMaxVersion);
+    vpwallets.front()->SetMaxVersion(nMaxVersion);
 
     // Do not upgrade versions to any version between HD_SPLIT and FEATURE_PRE_SPLIT_KEYPOOL unless already supporting HD_SPLIT
-    int max_version = pwalletMain->GetVersion();
-    if (!pwalletMain->CanSupportFeature(FEATURE_HD) && max_version >=FEATURE_HD && max_version < FEATURE_PRE_SPLIT_KEYPOOL) {
+    int max_version = vpwallets.front()->GetVersion();
+    if (!vpwallets.front()->CanSupportFeature(FEATURE_HD) && max_version >=FEATURE_HD && max_version < FEATURE_PRE_SPLIT_KEYPOOL) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Cannot upgrade a non HD split wallet without upgrading to support pre split keypool. Please use -upgradewallet=169900 or -upgradewallet with no version specified.");
     }
 
     bool hd_upgrade = false;
     bool split_upgrade = false;
-    if (pwalletMain->CanSupportFeature(FEATURE_HD) && !pwalletMain->IsHDEnabled()) {
+    if (vpwallets.front()->CanSupportFeature(FEATURE_HD) && !vpwallets.front()->IsHDEnabled()) {
         LogPrintf("Upgrading wallet to HD\n");
-        pwalletMain->SetMinVersion(FEATURE_HD);
+        vpwallets.front()->SetMinVersion(FEATURE_HD);
 
         if (walletModel->getEncryptionStatus() == WalletModel::Locked || walletModel->getEncryptionStatus() == WalletModel::UnlockedForStaking) {
             AskPassphraseDialog dlg(AskPassphraseDialog::Mode::Unlock, this, walletModel, AskPassphraseDialog::Context::ToggleLock);
@@ -659,26 +660,26 @@ void RPCConsole::walletUpgradeToHd()
         dlg.exec();
         words = dlg.getWords();
 
-        pwalletMain->GenerateNewHDChain(words, strWalletPass);
+        vpwallets.front()->GenerateNewHDChain(words, strWalletPass);
 
         hd_upgrade = true;
     }
 
     // Upgrade to HD chain split if necessary
-    if (pwalletMain->CanSupportFeature(FEATURE_HD)) {
+    if (vpwallets.front()->CanSupportFeature(FEATURE_HD)) {
         LogPrintf("Upgrading wallet to use HD chain split\n");
-        pwalletMain->SetMinVersion(FEATURE_PRE_SPLIT_KEYPOOL);
+        vpwallets.front()->SetMinVersion(FEATURE_PRE_SPLIT_KEYPOOL);
         split_upgrade = FEATURE_HD > prev_version;
     }
 
     // Mark all keys currently in the keypool as pre-split
     if (split_upgrade) {
-        pwalletMain->MarkPreSplitKeys();
+        vpwallets.front()->MarkPreSplitKeys();
     }
 
     // Regenerate the keypool if upgraded to HD
     if (hd_upgrade) {
-        if (!pwalletMain->TopUpKeyPool()) {
+        if (!vpwallets.front()->TopUpKeyPool()) {
             throw JSONRPCError(RPC_WALLET_ERROR, "Unable to generate keys\n");
         }
     }

@@ -15,7 +15,7 @@
 CzPIVWallet::CzPIVWallet(CWallet* parent)
 {
     this->wallet = parent;
-    CWalletDB walletdb(wallet->strWalletFile);
+    CWalletDB walletdb(wallet->GetDBHandle());
     bool fRegtest = Params().IsRegTestNet();
 
     uint256 hashSeed;
@@ -56,7 +56,7 @@ CzPIVWallet::CzPIVWallet(CWallet* parent)
         seed = key.GetPrivKey_256();
         seedMaster = seed;
         LogPrintf("%s: first run of zpiv wallet detected, new seed generated. Seedhash=%s\n", __func__, Hash(seed.begin(), seed.end()).GetHex());
-    } else if (!pwalletMain->GetDeterministicSeed(hashSeed, seed)) {
+    } else if (!vpwallets.front()->GetDeterministicSeed(hashSeed, seed)) {
         LogPrintf("%s: failed to get deterministic seed for hashseed %s\n", __func__, hashSeed.GetHex());
         return;
     }
@@ -71,7 +71,7 @@ CzPIVWallet::CzPIVWallet(CWallet* parent)
 bool CzPIVWallet::SetMasterSeed(const uint256& seedMaster, bool fResetCount)
 {
 
-    CWalletDB walletdb(wallet->strWalletFile);
+    CWalletDB walletdb(wallet->GetDBHandle());
     if (wallet->IsLocked())
         return false;
 
@@ -149,7 +149,7 @@ void CzPIVWallet::GenerateMintPool(uint32_t nCountStart, uint32_t nCountEnd)
         SeedToZPIV(seedZerocoin, bnValue, bnSerial, bnRandomness, key);
 
         mintPool.Add(bnValue, i);
-        CWalletDB(wallet->strWalletFile).WriteMintPoolPair(hashSeed, GetPubCoinHash(bnValue), i);
+        CWalletDB(wallet->GetDBHandle()).WriteMintPoolPair(hashSeed, GetPubCoinHash(bnValue), i);
         LogPrintf("%s : %s count=%d\n", __func__, bnValue.GetHex().substr(0, 6), i);
     }
 }
@@ -157,7 +157,7 @@ void CzPIVWallet::GenerateMintPool(uint32_t nCountStart, uint32_t nCountEnd)
 // pubcoin hashes are stored to db so that a full accounting of mints belonging to the seed can be tracked without regenerating
 bool CzPIVWallet::LoadMintPoolFromDB()
 {
-    std::map<uint256, std::vector<std::pair<uint256, uint32_t> > > mapMintPool = CWalletDB(wallet->strWalletFile).MapMintPool();
+    std::map<uint256, std::vector<std::pair<uint256, uint32_t> > > mapMintPool = CWalletDB(wallet->GetDBHandle()).MapMintPool();
 
     uint256 hashSeed = Hash(seedMaster.begin(), seedMaster.end());
     for (auto& pair : mapMintPool[hashSeed])
@@ -183,7 +183,7 @@ void CzPIVWallet::SyncWithChain(bool fGenerateMintPool)
 {
     uint32_t nLastCountUsed = 0;
     bool found = true;
-    CWalletDB walletdb(wallet->strWalletFile);
+    CWalletDB walletdb(wallet->GetDBHandle());
 
     std::set<uint256> setAddedTx;
     while (found) {
@@ -267,7 +267,7 @@ void CzPIVWallet::SyncWithChain(bool fGenerateMintPool)
 
                     //Fill out wtx so that a transaction record can be created
                     wtx.nTimeReceived = pindex->GetBlockTime();
-                    wallet->AddToWallet(wtx, false, &walletdb);
+                    wallet->AddToWallet(wtx, &walletdb);
                     setAddedTx.insert(txHash);
                 }
 
@@ -323,8 +323,8 @@ bool CzPIVWallet::SetMintSeen(const CBigNum& bnValue, const int& nHeight, const 
             wtx.SetMerkleBranch(block);
 
         wtx.nTimeReceived = pindex->nTime;
-        CWalletDB walletdb(wallet->strWalletFile);
-        wallet->AddToWallet(wtx, false, &walletdb);
+        CWalletDB walletdb(wallet->GetDBHandle());
+        wallet->AddToWallet(wtx, &walletdb);
     }
 
     // Add to zpivTracker which also adds to database
@@ -332,7 +332,7 @@ bool CzPIVWallet::SetMintSeen(const CBigNum& bnValue, const int& nHeight, const 
 
     //Update the count if it is less than the mint's count
     if (nCountLastUsed < pMint.second) {
-        CWalletDB walletdb(wallet->strWalletFile);
+        CWalletDB walletdb(wallet->GetDBHandle());
         nCountLastUsed = pMint.second;
         walletdb.WriteZPIVCount(nCountLastUsed);
     }
@@ -410,7 +410,7 @@ uint512 CzPIVWallet::GetZerocoinSeed(uint32_t n)
 void CzPIVWallet::UpdateCount()
 {
     nCountLastUsed++;
-    CWalletDB walletdb(strWalletFile);
+    CWalletDB walletdb(wallet->GetDBHandle());
     walletdb.WriteZPIVCount(nCountLastUsed);
 }
 

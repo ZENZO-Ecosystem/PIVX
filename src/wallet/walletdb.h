@@ -84,11 +84,18 @@ public:
     }
 };
 
-/** Access to the wallet database (wallet.dat) */
-class CWalletDB : public CDB
+/** Access to the wallet database.
+ * This should really be named CWalletDBBatch, as it represents a single transaction at the
+ * database. It will be committed when the object goes out of scope.
+ * Optionally (on by default) it will flush to disk as well.
+ */
+
+class CWalletDB
 {
 public:
-    CWalletDB(const std::string& strFilename, const char* pszMode = "r+", bool fFlushOnClose = true) : CDB(strFilename, pszMode, fFlushOnClose)
+    CWalletDB(CWalletDBWrapper& dbw, const char* pszMode = "r+", bool _fFlushOnClose = true) :
+        batch(dbw, pszMode, _fFlushOnClose),
+        m_dbw(dbw)
     {
     }
 
@@ -98,7 +105,7 @@ public:
     bool WritePurpose(const std::string& strAddress, const std::string& purpose);
     bool ErasePurpose(const std::string& strAddress);
 
-    bool WriteTx(uint256 hash, const CWalletTx& wtx);
+    bool WriteTx(const CWalletTx& wtx);
     bool EraseTx(uint256 hash);
 
     bool WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta);
@@ -134,7 +141,7 @@ public:
 
     /// This writes directly to the database, and will not update the CWallet's cached accounting entries!
     /// Use wallet.AddAccountingEntry instead, to write *and* update its caches.
-    bool WriteAccountingEntry_Backend(const CAccountingEntry& acentry);
+    bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
 
     bool ReadAccount(const std::string& strAccount, CAccount& account);
     bool WriteAccount(const std::string& strAccount, const CAccount& account);
@@ -151,8 +158,18 @@ public:
     DBErrors LoadWallet(CWallet* pwallet);
     DBErrors FindWalletTx(CWallet* pwallet, std::vector<uint256>& vTxHash, std::vector<CWalletTx>& vWtx);
     DBErrors ZapWalletTx(CWallet* pwallet, std::vector<CWalletTx>& vWtx);
-    static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
-    static bool Recover(CDBEnv& dbenv, std::string filename);
+    /* Try to (very carefully!) recover wallet database (with a possible key type filter) */
+    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename);
+    /* Recover convenience-function to bypass the key filter callback, called when verify fails, recovers everything */
+    static bool Recover(const std::string& filename, std::string& out_backup_filename);
+    /* Recover filter (used as callback), will only let keys (cryptographical keys) as KV/key-type pass through */
+    static bool RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue);
+    /* Function to determine if a certain KV/key-type is a key (cryptographical key) type */
+    static bool IsKeyType(const std::string& strType);
+    /* verifies the database environment */
+    static bool VerifyEnvironment(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& errorStr);
+    /* verifies the database file */
+    static bool VerifyDatabaseFile(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& warningStr, std::string& errorStr);
 
     //! write the hdchain model (external chain child index counter)
     bool WriteHDChain(const CHDChain& chain);
@@ -191,11 +208,43 @@ public:
     std::map<uint256, std::vector<std::pair<uint256, uint32_t> > > MapMintPool();
     bool WriteMintPoolPair(const uint256& hashMasterSeed, const uint256& hashPubcoin, const uint32_t& nCount);
 
+    //! Begin a new transaction
+    bool TxnBegin();
+    //! Commit current transaction
+    bool TxnCommit();
+    //! Abort current transaction
+    bool TxnAbort();
+    //! Read wallet version
+    bool ReadVersion(int& nVersion);
+    //! Write wallet version
+    bool WriteVersion(int nVersion);
+
 private:
+    CDB batch;
+    CWalletDBWrapper& m_dbw;
+
     CWalletDB(const CWalletDB&);
     void operator=(const CWalletDB&);
 
-    bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
+    template <typename K, typename T>
+    bool WriteIC(const K& key, const T& value, bool fOverwrite = true)
+    {
+        if (!batch.Write(key, value, fOverwrite)) {
+            return false;
+        }
+        m_dbw.IncrementUpdateCounter();
+        return true;
+    }
+
+    template <typename K>
+    bool EraseIC(const K& key)
+    {
+        if (!batch.Erase(key)) {
+            return false;
+        }
+        m_dbw.IncrementUpdateCounter();
+        return true;
+    }
 };
 
 void NotifyBacked(const CWallet& wallet, bool fSuccess, std::string strMessage);

@@ -47,7 +47,6 @@
 #include "zpivchain.h"
 
 #ifdef ENABLE_WALLET
-#include "wallet/db.h"
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
 
@@ -74,7 +73,6 @@
 
 
 #ifdef ENABLE_WALLET
-CWallet* pwalletMain = NULL;
 CzPIVWallet* zwalletMain = NULL;
 int nWalletBackups = 10;
 #endif
@@ -204,8 +202,9 @@ void PrepareShutdown()
     StopRPC();
     StopHTTPServer();
 #ifdef ENABLE_WALLET
-    if (pwalletMain)
-        bitdb.Flush(false);
+    for (CWalletRef pwallet : vpwallets) {
+        pwallet->Flush(false);
+    }
     GenerateBitcoins(false, NULL, 0);
 #endif
     StopNode();
@@ -251,8 +250,9 @@ void PrepareShutdown()
         pSporkDB = NULL;
     }
 #ifdef ENABLE_WALLET
-    if (pwalletMain)
-        bitdb.Flush(true);
+    for (CWalletRef pwallet : vpwallets) {
+        pwallet->Flush(true);
+    }
 #endif
 
 #if ENABLE_ZMQ
@@ -291,8 +291,10 @@ void Shutdown()
     // Shutdown part 2: Stop TOR thread and delete wallet instance
     StopTorControl();
 #ifdef ENABLE_WALLET
-    delete pwalletMain;
-    pwalletMain = NULL;
+    for (CWalletRef pwallet : vpwallets) {
+        delete pwallet;
+    }
+    vpwallets.clear();
     delete zwalletMain;
     zwalletMain = NULL;
 #endif
@@ -365,11 +367,6 @@ void OnRPCStopped()
 
 void OnRPCPreCommand(const CRPCCommand& cmd)
 {
-#ifdef ENABLE_WALLET
-    if (cmd.reqWallet && !pwalletMain)
-        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
-#endif
-
     // Observe safe mode
     std::string strWarning = GetWarnings("rpc");
     if (strWarning != "" && !GetBoolArg("-disablesafemode", false) &&
@@ -589,6 +586,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-rpccookiefile=<loc>", _("Location of the auth cookie (default: data dir)"));
     strUsage += HelpMessageOpt("-rpcuser=<user>", _("Username for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", _("Password for JSON-RPC connections"));
+    strUsage += HelpMessageOpt("-rpcauth=<userpw>", _("Username and hashed password for JSON-RPC connections. The field <userpw> comes in the format: <USERNAME>:<SALT>$<HASH>. A canonical python script is included in share/rpcuser. This option can be specified multiple times"));
     strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(_("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), 26211, 51475));
     strUsage += HelpMessageOpt("-rpcallowip=<ip>", _("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
     strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(_("Set the number of threads to service RPC calls (default: %d)"), DEFAULT_HTTP_THREADS));
@@ -850,6 +848,9 @@ bool AppInitBasicSetup()
 // Parameter interaction based on rules
 void InitParameterInteraction()
 {
+    SoftSetArg("-wallet", "wallet.dat");
+    const bool is_multiwallet = GetArgs("-wallet").size() > 1;
+
     if (mapArgs.count("-bind") || mapArgs.count("-whitebind")) {
         // when specifying an explicit binding address, you want to listen on it
         // even when -connect or -proxy is specified
@@ -895,6 +896,10 @@ void InitParameterInteraction()
     }
 
     if (GetBoolArg("-salvagewallet", false)) {
+        if (is_multiwallet) {
+            InitError(strprintf("%s is only allowed with a single wallet file", "-salvagewallet"));
+            return;
+        }
         // Rewrite just private keys: rescan to find transactions
         if (SoftSetBoolArg("-rescan", true))
             LogPrintf("%s : parameter interaction: -salvagewallet=1 -> setting -rescan=1\n", __func__);
@@ -902,8 +907,19 @@ void InitParameterInteraction()
 
     // -zapwallettx implies a rescan
     if (GetBoolArg("-zapwallettxes", false)) {
+        if (is_multiwallet) {
+            InitError(strprintf("%s is only allowed with a single wallet file", "-zapwallettxes"));
+            return;
+        }
         if (SoftSetBoolArg("-rescan", true))
             LogPrintf("%s : parameter interaction: -zapwallettxes=<mode> -> setting -rescan=1\n", __func__);
+    }
+
+    if (is_multiwallet) {
+        if (GetBoolArg("-upgradewallet", false)) {
+            InitError(strprintf("%s is only allowed with a single wallet file", "-upgradewallet"));
+            return;
+        }
     }
 
     if (!GetBoolArg("-enableswifttx", fEnableSwiftTX)) {
@@ -1000,6 +1016,8 @@ bool AppInit2(const std::vector<std::string>& words)
         if (SoftSetBoolArg("-staking", false))
             LogPrintf("AppInit2 : parameter interaction: wallet functionality not enabled -> setting -staking=0\n");
 #ifdef ENABLE_WALLET
+    } else {
+        walletRegisterRPCCommands();
     }
 #endif
 
@@ -1022,43 +1040,8 @@ bool AppInit2(const std::vector<std::string>& words)
     }
 
 #ifdef ENABLE_WALLET
-    if (mapArgs.count("-mintxfee")) {
-        CAmount n = 0;
-        if (ParseMoney(mapArgs["-mintxfee"], n) && n > 0)
-            CWallet::minTxFee = CFeeRate(n);
-        else
-            return InitError(AmountErrMsg("mintxfee", mapArgs["-mintxfee"]));
-    }
-    if (mapArgs.count("-paytxfee")) {
-        CAmount nFeePerK = 0;
-        if (!ParseMoney(mapArgs["-paytxfee"], nFeePerK))
-            return InitError(AmountErrMsg("paytxfee", mapArgs["-paytxfee"]));
-        if (nFeePerK > nHighTransactionFeeWarning)
-            InitWarning(_("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
-        payTxFee = CFeeRate(nFeePerK, 1000);
-        if (payTxFee < ::minRelayTxFee) {
-            return InitError(strprintf(_("Invalid amount for -paytxfee=<amount>: '%s' (must be at least %s)"),
-                mapArgs["-paytxfee"], ::minRelayTxFee.ToString()));
-        }
-    }
-    if (mapArgs.count("-maxtxfee")) {
-        CAmount nMaxFee = 0;
-        if (!ParseMoney(mapArgs["-maxtxfee"], nMaxFee))
-            return InitError(AmountErrMsg("maxtxfee", mapArgs["-maxtxfee"]));
-        if (nMaxFee > nHighTransactionMaxFeeWarning)
-            InitWarning(_("Warning: -maxtxfee is set very high! Fees this large could be paid on a single transaction."));
-        maxTxFee = nMaxFee;
-        if (CFeeRate(maxTxFee, 1000) < ::minRelayTxFee) {
-            return InitError(strprintf(_("Invalid amount for -maxtxfee=<amount>: '%s' (must be at least the minrelay fee of %s to prevent stuck transactions)"),
-                mapArgs["-maxtxfee"], ::minRelayTxFee.ToString()));
-        }
-    }
-    nTxConfirmTarget = GetArg("-txconfirmtarget", 1);
-    bSpendZeroConfChange = GetBoolArg("-spendzeroconfchange", false);
-    bdisableSystemnotifications = GetBoolArg("-disablesystemnotifications", false);
-    fSendFreeTransactions = GetBoolArg("-sendfreetransactions", false);
-
-    std::string strWalletFile = GetArg("-wallet", "wallet.dat");
+    if (!CWallet::ParameterInteraction())
+        return false;
 #endif // ENABLE_WALLET
 
     fIsBareMultisigStd = GetBoolArg("-permitbaremultisig", true) != 0;
@@ -1081,11 +1064,7 @@ bool AppInit2(const std::vector<std::string>& words)
         return InitError(_("Initialization sanity check failed. ZENZO Core is shutting down."));
 
     std::string strDataDir = GetDataDir().string();
-#ifdef ENABLE_WALLET
-    // Wallet file must be a plain filename without a directory
-    if (strWalletFile != boost::filesystem::basename(strWalletFile) + boost::filesystem::extension(strWalletFile))
-        return InitError(strprintf(_("Wallet %s resides outside data directory %s"), strWalletFile, strDataDir));
-#endif
+
     // Make sure only a single ZENZO process is using the data directory.
     boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
@@ -1141,9 +1120,47 @@ bool AppInit2(const std::vector<std::string>& words)
             return InitError(_("Unable to start HTTP server. See debug log for details."));
     }
 
+    if (GetBoolArg("-resync", false)) {
+            uiInterface.InitMessage(_("Preparing for resync..."));
+            // Delete the local blockchain folders to force a resync from scratch to get a consitent blockchain-state
+            boost::filesystem::path blocksDir = GetDataDir() / "blocks";
+            boost::filesystem::path chainstateDir = GetDataDir() / "chainstate";
+            boost::filesystem::path sporksDir = GetDataDir() / "sporks";
+            boost::filesystem::path zerocoinDir = GetDataDir() / "zerocoin";
+
+            LogPrintf("Deleting blockchain folders blocks, chainstate, sporks and zerocoin\n");
+            // We delete in 4 individual steps in case one of the folder is missing already
+            try {
+                if (boost::filesystem::exists(blocksDir)){
+                    boost::filesystem::remove_all(blocksDir);
+                    LogPrintf("-resync: folder deleted: %s\n", blocksDir.string().c_str());
+                }
+
+                if (boost::filesystem::exists(chainstateDir)){
+                    boost::filesystem::remove_all(chainstateDir);
+                    LogPrintf("-resync: folder deleted: %s\n", chainstateDir.string().c_str());
+                }
+
+                if (boost::filesystem::exists(sporksDir)){
+                    boost::filesystem::remove_all(sporksDir);
+                    LogPrintf("-resync: folder deleted: %s\n", sporksDir.string().c_str());
+                }
+
+                if (boost::filesystem::exists(zerocoinDir)){
+                    boost::filesystem::remove_all(zerocoinDir);
+                    LogPrintf("-resync: folder deleted: %s\n", zerocoinDir.string().c_str());
+                }
+            } catch (const boost::filesystem::filesystem_error& error) {
+                LogPrintf("Failed to delete blockchain folders %s\n", error.what());
+            }
+        }
+
 // ********************************************************* Step 5: Backup wallet and verify wallet database integrity
+// TODO: Add backups for ALL wallet databases within a multiwallet, prefixed by each wallet's filename
+
 #ifdef ENABLE_WALLET
     if (!fDisableWallet) {
+        /*
         boost::filesystem::path backupDir = GetDataDir() / "backups";
         if (!boost::filesystem::exists(backupDir)) {
             // Always create backup folder to not confuse the operating system's file browser
@@ -1211,84 +1228,9 @@ bool AppInit2(const std::vector<std::string>& words)
                 }
             }
         }
-
-        if (GetBoolArg("-resync", false)) {
-            uiInterface.InitMessage(_("Preparing for resync..."));
-            // Delete the local blockchain folders to force a resync from scratch to get a consitent blockchain-state
-            boost::filesystem::path blocksDir = GetDataDir() / "blocks";
-            boost::filesystem::path chainstateDir = GetDataDir() / "chainstate";
-            boost::filesystem::path sporksDir = GetDataDir() / "sporks";
-            boost::filesystem::path zerocoinDir = GetDataDir() / "zerocoin";
-
-            LogPrintf("Deleting blockchain folders blocks, chainstate, sporks and zerocoin\n");
-            // We delete in 4 individual steps in case one of the folder is missing already
-            try {
-                if (boost::filesystem::exists(blocksDir)){
-                    boost::filesystem::remove_all(blocksDir);
-                    LogPrintf("-resync: folder deleted: %s\n", blocksDir.string().c_str());
-                }
-
-                if (boost::filesystem::exists(chainstateDir)){
-                    boost::filesystem::remove_all(chainstateDir);
-                    LogPrintf("-resync: folder deleted: %s\n", chainstateDir.string().c_str());
-                }
-
-                if (boost::filesystem::exists(sporksDir)){
-                    boost::filesystem::remove_all(sporksDir);
-                    LogPrintf("-resync: folder deleted: %s\n", sporksDir.string().c_str());
-                }
-
-                if (boost::filesystem::exists(zerocoinDir)){
-                    boost::filesystem::remove_all(zerocoinDir);
-                    LogPrintf("-resync: folder deleted: %s\n", zerocoinDir.string().c_str());
-                }
-            } catch (const boost::filesystem::filesystem_error& error) {
-                LogPrintf("Failed to delete blockchain folders %s\n", error.what());
-            }
-        }
-
-        LogPrintf("Using wallet %s\n", strWalletFile);
-        uiInterface.InitMessage(_("Verifying wallet..."));
-
-        if (!bitdb.Open(GetDataDir())) {
-            // try moving the database env out of the way
-            boost::filesystem::path pathDatabase = GetDataDir() / "database";
-            boost::filesystem::path pathDatabaseBak = GetDataDir() / strprintf("database.%d.bak", GetTime());
-            try {
-                boost::filesystem::rename(pathDatabase, pathDatabaseBak);
-                LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
-            } catch (const boost::filesystem::filesystem_error& error) {
-                // failure is ok (well, not really, but it's not worse than what we started with)
-            }
-
-            // try again
-            if (!bitdb.Open(GetDataDir())) {
-                // if it still fails, it probably means we can't even create the database env
-                std::string msg = strprintf(_("Error initializing wallet database environment %s!"), strDataDir);
-                return InitError(msg);
-            }
-        }
-
-        if (GetBoolArg("-salvagewallet", false)) {
-            // Recover readable keypairs:
-            if (!CWalletDB::Recover(bitdb, strWalletFile, true))
-                return false;
-        }
-
-        if (boost::filesystem::exists(GetDataDir() / strWalletFile)) {
-            CDBEnv::VerifyResult r = bitdb.Verify(strWalletFile, CWalletDB::Recover);
-            if (r == CDBEnv::RECOVER_OK) {
-                std::string msg = strprintf(_("Warning: wallet.dat corrupt, data salvaged!"
-                                         " Original wallet.dat saved as wallet.{timestamp}.bak in %s; if"
-                                         " your balance or transactions are incorrect you should"
-                                         " restore from a backup."),
-                    strDataDir);
-                InitWarning(msg);
-            }
-            if (r == CDBEnv::RECOVER_FAIL)
-                return InitError(_("wallet.dat corrupt, salvage failed"));
-        }
-
+*/
+        if (!CWallet::Verify())
+            return false;
     }  // (!fDisableWallet)
 #endif // ENABLE_WALLET
 
@@ -1614,163 +1556,12 @@ bool AppInit2(const std::vector<std::string>& words)
 // ********************************************************* Step 8: load wallet
 #ifdef ENABLE_WALLET
     if (fDisableWallet) {
-        pwalletMain = NULL;
         zwalletMain = NULL;
         LogPrintf("Wallet disabled!\n");
     } else {
-        // needed to restore wallet transaction meta data after -zapwallettxes
-        std::vector<CWalletTx> vWtx;
-
-        if (GetBoolArg("-zapwallettxes", false)) {
-            uiInterface.InitMessage(_("Zapping all transactions from wallet..."));
-
-            pwalletMain = new CWallet(strWalletFile);
-            DBErrors nZapWalletRet = pwalletMain->ZapWalletTx(vWtx);
-            if (nZapWalletRet != DB_LOAD_OK) {
-                uiInterface.InitMessage(_("Error loading wallet.dat: Wallet corrupted"));
-                return false;
-            }
-
-            delete pwalletMain;
-            pwalletMain = NULL;
-        }
-
-        uiInterface.InitMessage(_("Loading wallet..."));
-        fVerifyingBlocks = true;
-
-        const int64_t nWalletStartTime = GetTimeMillis();
-        bool fFirstRun = true;
-        pwalletMain = new CWallet(strWalletFile);
-        DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
-        if (nLoadWalletRet != DB_LOAD_OK) {
-            if (nLoadWalletRet == DB_CORRUPT)
-                strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
-            else if (nLoadWalletRet == DB_NONCRITICAL_ERROR) {
-                std::string msg(_("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
-                             " or address book entries might be missing or incorrect."));
-                InitWarning(msg);
-            } else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of ZENZO Core") << "\n";
-            else if (nLoadWalletRet == DB_NEED_REWRITE) {
-                strErrors << _("Wallet needed to be rewritten: restart ZENZO Core to complete") << "\n";
-                LogPrintf("%s", strErrors.str());
-                return InitError(strErrors.str());
-            } else
-                strErrors << _("Error loading wallet.dat") << "\n";
-        }
-
-        int prev_version = pwalletMain->GetVersion();
-
-        if (GetBoolArg("-upgradewallet", fFirstRun) || (words.size() !=0 && !pwalletMain->IsHDEnabled() && CheckIfWalletDatExists())) {
-            int nMaxVersion = GetArg("-upgradewallet", 0);
-            if (nMaxVersion == 0) // the -upgradewallet without argument case
-            {
-                LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
-                nMaxVersion = CLIENT_VERSION;
-                pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
-            } else
-                LogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
-            if (nMaxVersion < pwalletMain->GetVersion())
-                strErrors << _("Cannot downgrade wallet") << "\n";
-            pwalletMain->SetMaxVersion(nMaxVersion);
-        }
-
-        if (fFirstRun) {
-
-       if ((GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET) && !pwalletMain->IsHDEnabled()) || (words.size() != 0 && !pwalletMain->IsHDEnabled())) {
-                if (GetArg("-mnemonicpassphrase", "").size() > 256)
-                    return InitError(_("Mnemonic passphrase is too long, must be at most 256 characters"));
-                // generate a new master key
-                pwalletMain->GenerateNewHDChain(words);
-                // ensure this wallet.dat can only be opened by clients supporting HD
-                pwalletMain->SetMinVersion(FEATURE_HD);
-            }
-
-        CPubKey newDefaultKey;
-        if (!pwalletMain->TopUpKeyPool()) {
-            // Error generating keys
-            InitError(_("Unable to generate initial key") += "\n");
-            return error("%s %s", __func__ , "Unable to generate initial key");
-        }
-
-            pwalletMain->SetBestChain(chainActive.GetLocator());
-
-        }else if (mapArgs.count("-usehd")) {
-            bool useHD = GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET);
-            if (pwalletMain->IsHDEnabled() && !useHD)
-                return InitError(strprintf(_("Error loading %s: You can't disable HD on a already existing HD wallet"), strWalletFile));
-            if (!pwalletMain->IsHDEnabled() && useHD)
-                return InitError(strprintf(_("Error loading %s: You can't enable HD on a already existing non-HD wallet"), strWalletFile));
-        }
-
-        // Warn user every time he starts non-encrypted HD wallet
-        if (GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET) && !pwalletMain->IsLocked() && DEFAULT_ENABLE_WARN_ENCRYPTHD) {
-            InitWarning(_("Make sure to encrypt your wallet and delete all non-encrypted backups after you verified that wallet works!"));
-        }
-
-
-        LogPrintf("Init errors: %s\n", strErrors.str());
-        LogPrintf("Wallet completed loading in %15dms\n", GetTimeMillis() - nWalletStartTime);
-        zwalletMain = new CzPIVWallet(pwalletMain);
-        pwalletMain->setZWallet(zwalletMain);
-
-        RegisterValidationInterface(pwalletMain);
-
-        CBlockIndex* pindexRescan = chainActive.Tip();
-        if (GetBoolArg("-rescan", false))
-            pindexRescan = chainActive.Genesis();
-        else {
-            CWalletDB walletdb(strWalletFile);
-            CBlockLocator locator;
-            if (walletdb.ReadBestBlock(locator))
-                pindexRescan = FindForkInGlobalIndex(chainActive, locator);
-            else
-                pindexRescan = chainActive.Genesis();
-        }
-        if (chainActive.Tip() && chainActive.Tip() != pindexRescan) {
-            uiInterface.InitMessage(_("Rescanning..."));
-            LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
-            const int64_t nWalletRescanTime = GetTimeMillis();
-            if (pwalletMain->ScanForWalletTransactions(pindexRescan, true, true) == -1) {
-                return error("Shutdown requested over the txs scan. Exiting.");
-            }
-            LogPrintf("Rescan completed in %15dms\n", GetTimeMillis() - nWalletRescanTime);
-            pwalletMain->SetBestChain(chainActive.GetLocator());
-            nWalletDBUpdated++;
-
-            // Restore wallet transaction metadata after -zapwallettxes=1
-            if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2") {
-                CWalletDB walletdb(strWalletFile);
-                for (const CWalletTx& wtxOld : vWtx) {
-                    uint256 hash = wtxOld.GetHash();
-                    std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(hash);
-                    if (mi != pwalletMain->mapWallet.end()) {
-                        const CWalletTx* copyFrom = &wtxOld;
-                        CWalletTx* copyTo = &mi->second;
-                        copyTo->mapValue = copyFrom->mapValue;
-                        copyTo->vOrderForm = copyFrom->vOrderForm;
-                        copyTo->nTimeReceived = copyFrom->nTimeReceived;
-                        copyTo->nTimeSmart = copyFrom->nTimeSmart;
-                        copyTo->fFromMe = copyFrom->fFromMe;
-                        copyTo->strFromAccount = copyFrom->strFromAccount;
-                        copyTo->nOrderPos = copyFrom->nOrderPos;
-                        copyTo->WriteToDisk(&walletdb);
-                    }
-                }
-            }
-        }
-        fVerifyingBlocks = false;
-
-        if (!zwalletMain->GetMasterSeed().IsNull()) {
-            //Inititalize zPIVWallet
-            uiInterface.InitMessage(_("Syncing zPIV wallet..."));
-
-            //Load zerocoin mint hashes to memory
-            pwalletMain->zpivTracker->Init();
-            zwalletMain->LoadMintPoolFromDB();
-            zwalletMain->SyncWithChain();
-        }
-    }  // (!fDisableWallet)
+        if (!CWallet::InitLoadWallet(words))
+            return false;
+    }
 #else  // ENABLE_WALLET
     LogPrintf("No wallet compiled in!\n");
 #endif // !ENABLE_WALLET
@@ -1907,15 +1698,19 @@ bool AppInit2(const std::vector<std::string>& words)
     //get the mode of budget voting for this masternode
     strBudgetMode = GetArg("-budgetvotemode", "auto");
 
-    if (GetBoolArg("-mnconflock", true) && pwalletMain) {
-        LOCK(pwalletMain->cs_wallet);
-        LogPrintf("Locking Masternodes:\n");
-        uint256 mnTxHash;
-        for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
-            LogPrintf("  %s %s\n", mne.getTxHash(), mne.getOutputIndex());
-            mnTxHash.SetHex(mne.getTxHash());
-            COutPoint outpoint = COutPoint(mnTxHash, (unsigned int) std::stoul(mne.getOutputIndex().c_str()));
-            pwalletMain->LockCoin(outpoint);
+    if (GetBoolArg("-mnconflock", true) && !vpwallets.empty()) {
+        for (CWalletRef pwallet : vpwallets) {
+            LOCK(pwallet->cs_wallet);
+            LogPrintf("Locking Masternodes:\n");
+            uint256 mnTxHash;
+            // Note for multiwallets: This will attempt to lock ALL config outpoints in ALL loaded wallets,
+            // but this won't cause any errors.
+            for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
+                LogPrintf("  %s %s\n", mne.getTxHash(), mne.getOutputIndex());
+                mnTxHash.SetHex(mne.getTxHash());
+                COutPoint outpoint = COutPoint(mnTxHash, (unsigned int) std::stoul(mne.getOutputIndex().c_str()));
+                pwallet->LockCoin(outpoint);
+            }
         }
     }
 
@@ -1960,15 +1755,17 @@ bool AppInit2(const std::vector<std::string>& words)
 
     // ********************************************************* Step 11: Lock Forge items
 
-    if (pwalletMain) {
-        LOCK(pwalletMain->cs_wallet);
-        LogPrintf("Locking Forge Items:\n");
-        uint256 itemTxHash;
-        for (CForge::CForgeItem item : forgeMain.getEntries()) {
-            LogPrintf("  %s %s\n", item.getTxHash(), item.getOutputIndex());
-            itemTxHash.SetHex(item.getTxHash());
-            COutPoint outpoint = COutPoint(itemTxHash, (unsigned int) std::stoul(item.getOutputIndex().c_str()));
-            pwalletMain->LockCoin(outpoint);
+    if (!vpwallets.empty()) {
+        for (CWalletRef pwallet : vpwallets) {
+            LOCK(pwallet->cs_wallet);
+            LogPrintf("Locking Forge Items:\n");
+            uint256 itemTxHash;
+            for (CForge::CForgeItem item : forgeMain.getEntries()) {
+                LogPrintf("  %s %s\n", item.getTxHash(), item.getOutputIndex());
+                itemTxHash.SetHex(item.getTxHash());
+                COutPoint outpoint = COutPoint(itemTxHash, (unsigned int) std::stoul(item.getOutputIndex().c_str()));
+                pwallet->LockCoin(outpoint);
+            }
         }
     }
     
@@ -1981,12 +1778,15 @@ bool AppInit2(const std::vector<std::string>& words)
     LogPrintf("mapBlockIndex.size() = %u\n", mapBlockIndex.size());
     LogPrintf("chainActive.Height() = %d\n", chainActive.Height());
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
-        LOCK(pwalletMain->cs_wallet);
-        LogPrintf("setExternalKeyPool.size() = %u\n",   pwalletMain->KeypoolCountExternalKeys());
-        LogPrintf("setInternalKeyPool.size() = %u\n",   pwalletMain->KeypoolCountInternalKeys());
-        LogPrintf("mapWallet.size() = %u\n",            pwalletMain->mapWallet.size());
-        LogPrintf("mapAddressBook.size() = %u\n",       pwalletMain->mapAddressBook.size());
+    if (!vpwallets.empty()) {
+        for (CWalletRef pwallet : vpwallets) {
+            LOCK(pwallet->cs_wallet);
+            LogPrintf("Wallet %s:\n", pwallet->GetName());
+            LogPrintf("setExternalKeyPool.size() = %u\n",   pwallet->KeypoolCountExternalKeys());
+            LogPrintf("setInternalKeyPool.size() = %u\n",   pwallet->KeypoolCountInternalKeys());
+            LogPrintf("mapWallet.size() = %u\n",            pwallet->mapWallet.size());
+            LogPrintf("mapAddressBook.size() = %u\n",       pwallet->mapAddressBook.size());
+        }
     } else {
         LogPrintf("wallet is NULL\n");
     }
@@ -1999,8 +1799,8 @@ bool AppInit2(const std::vector<std::string>& words)
 
 #ifdef ENABLE_WALLET
     // Generate coins in the background
-    if (pwalletMain)
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1));
+    if (!vpwallets.empty()) // TODO: Decide how generation control be handled with multiple wallets
+        GenerateBitcoins(GetBoolArg("-gen", false), vpwallets.front(), GetArg("-genproclimit", 1));
 #endif
 
     // ********************************************************* Step 13: finished
@@ -2009,17 +1809,13 @@ bool AppInit2(const std::vector<std::string>& words)
     uiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
-        // Add wallet transactions that aren't already in a block to mapTransactions
-        pwalletMain->ReacceptWalletTransactions(/*fFirstLoad*/true);
+    for (CWalletRef pwallet : vpwallets) {
+        pwallet->postInitProcess(threadGroup);
+    }
 
-        // Run a thread to flush wallet periodically
-        threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
-
-        // StakeMiner thread disabled by default on regtest
-        if (GetBoolArg("-staking", !Params().IsRegTestNet())) {
-            threadGroup.create_thread(boost::bind(&ThreadStakeMinter));
-        }
+    // StakeMiner thread disabled by default on regtest
+    if (GetBoolArg("-staking", !Params().IsRegTestNet())) {
+        threadGroup.create_thread(boost::bind(&ThreadStakeMinter));
     }
 #endif
 

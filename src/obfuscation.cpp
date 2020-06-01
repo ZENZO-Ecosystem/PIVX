@@ -87,17 +87,17 @@ bool CObfuscationPool::SetCollateralAddress(std::string strAddress)
 //
 void CObfuscationPool::UnlockCoins()
 {
-    if (!pwalletMain)
+    if (vpwallets.empty())
         return;
 
     while (true) {
-        TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
+        TRY_LOCK(vpwallets.front()->cs_wallet, lockWallet);
         if (!lockWallet) {
             MilliSleep(50);
             continue;
         }
         for (CTxIn v : lockedCoins)
-            pwalletMain->UnlockCoin(v.prevout);
+            vpwallets.front()->UnlockCoin(v.prevout);
         break;
     }
 
@@ -173,9 +173,9 @@ void CObfuscationPool::CheckFinalTransaction()
 {
     if (!fMasterNode) return; // check and relay final tx only on masternode
 
-    CWalletTx txNew = CWalletTx(pwalletMain, finalTransaction);
+    CWalletTx txNew = CWalletTx(vpwallets.front(), finalTransaction);
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, vpwallets.front()->cs_wallet);
     {
         LogPrint("obfuscation", "Transaction 2: %s\n", txNew.ToString());
 
@@ -321,7 +321,7 @@ void CObfuscationPool::ChargeFees()
             if (!found && r > target) {
                 LogPrintf("CObfuscationPool::ChargeFees -- found uncooperative node (didn't send transaction). charging fees.\n");
 
-                CWalletTx wtxCollateral = CWalletTx(pwalletMain, txCollateral);
+                CWalletTx wtxCollateral = CWalletTx(vpwallets.front(), txCollateral);
 
                 // Broadcast
                 if (!wtxCollateral.AcceptToMemoryPool(true)) {
@@ -341,7 +341,7 @@ void CObfuscationPool::ChargeFees()
                 if (!s.fHasSig && r > target) {
                     LogPrintf("CObfuscationPool::ChargeFees -- found uncooperative node (didn't sign). charging fees.\n");
 
-                    CWalletTx wtxCollateral = CWalletTx(pwalletMain, v.collateral);
+                    CWalletTx wtxCollateral = CWalletTx(vpwallets.front(), v.collateral);
 
                     // Broadcast
                     if (!wtxCollateral.AcceptToMemoryPool(false)) {
@@ -378,7 +378,7 @@ void CObfuscationPool::ChargeRandomFees()
             if (r <= 10) {
                 LogPrintf("CObfuscationPool::ChargeRandomFees -- charging random fees. %u\n", i);
 
-                CWalletTx wtxCollateral = CWalletTx(pwalletMain, txCollateral);
+                CWalletTx wtxCollateral = CWalletTx(vpwallets.front(), txCollateral);
 
                 // Broadcast
                 if (!wtxCollateral.AcceptToMemoryPool(true)) {

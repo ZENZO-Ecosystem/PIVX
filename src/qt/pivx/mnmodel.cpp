@@ -34,11 +34,11 @@ void MNModel::updateMNList()
             pmn->activeState = CMasternode::MASTERNODE_MISSING;
         }
         nodes.insert(QString::fromStdString(mne.getAlias()), std::make_pair(QString::fromStdString(mne.getIp()), pmn));
-        if (pwalletMain) {
+        if (vpwallets.front()) {
             bool txAccepted = false;
             {
-                LOCK2(cs_main, pwalletMain->cs_wallet);
-                const CWalletTx *walletTx = pwalletMain->GetWalletTx(txHash);
+                LOCK2(cs_main, vpwallets.front()->cs_wallet);
+                const CWalletTx *walletTx = vpwallets.front()->GetWalletTx(txHash);
                 if (walletTx && walletTx->GetDepthInMainChain() >= MASTERNODE_MIN_CONFIRMATIONS) {
                     txAccepted = true;
                 }
@@ -103,8 +103,8 @@ QVariant MNModel::data(const QModelIndex &index, int role) const
                 if (!collateralTxAccepted.value(txHash)) {
                     bool txAccepted = false;
                     {
-                        LOCK2(cs_main, pwalletMain->cs_wallet);
-                        const CWalletTx *walletTx = pwalletMain->GetWalletTx(rec->vin.prevout.hash);
+                        LOCK2(cs_main, vpwallets.front()->cs_wallet);
+                        const CWalletTx *walletTx = vpwallets.front()->GetWalletTx(rec->vin.prevout.hash);
                         txAccepted = walletTx && walletTx->GetDepthInMainChain() > 0;
                     }
                     return txAccepted;

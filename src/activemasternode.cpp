@@ -46,13 +46,13 @@ void CActiveMasternode::ManageStatus()
         status = ACTIVE_MASTERNODE_NOT_CAPABLE;
         notCapableReason = "";
 
-        if (pwalletMain->IsLocked()) {
+        if (vpwallets.front()->IsLocked()) {
             notCapableReason = "Wallet is locked.";
             LogPrintf("CActiveMasternode::ManageStatus() - not capable: %s\n", notCapableReason);
             return;
         }
 
-        if (pwalletMain->GetBalance() == 0) {
+        if (vpwallets.front()->GetBalance() == 0) {
             notCapableReason = "Hot node, waiting for remote activation.";
             LogPrintf("CActiveMasternode::ManageStatus() - not capable: %s\n", notCapableReason);
             return;
@@ -94,8 +94,8 @@ void CActiveMasternode::ManageStatus()
                 return;
             }
 
-            LOCK(pwalletMain->cs_wallet);
-            pwalletMain->LockCoin(vin.prevout);
+            LOCK(vpwallets.front()->cs_wallet);
+            vpwallets.front()->LockCoin(vin.prevout);
 
             // send to all nodes
             CPubKey pubKeyMasternode;
@@ -289,7 +289,7 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
     if (fImporting || fReindex) return false;
 
     // Find possible candidates
-    TRY_LOCK(pwalletMain->cs_wallet, fWallet);
+    TRY_LOCK(vpwallets.front()->cs_wallet, fWallet);
     if (!fWallet) return false;
 
     std::vector<COutput> possibleCoins = SelectCoinsMasternode();
@@ -355,7 +355,7 @@ bool CActiveMasternode::GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubke
         return false;
     }
 
-    if (!pwalletMain->GetKey(keyID, secretKey)) {
+    if (!vpwallets.front()->GetKey(keyID, secretKey)) {
         LogPrintf("CActiveMasternode::GetMasterNodeVin - Private key for address is not known\n");
         return false;
     }
@@ -383,17 +383,17 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 
             COutPoint outpoint = COutPoint(mnTxHash, nIndex);
             confLockedCoins.push_back(outpoint);
-            pwalletMain->UnlockCoin(outpoint);
+            vpwallets.front()->UnlockCoin(outpoint);
         }
     }
 
     // Retrieve all possible outputs
-    pwalletMain->AvailableCoins(&vCoins);
+    vpwallets.front()->AvailableCoins(&vCoins);
 
     // Lock MN coins from masternode.conf back if they where temporary unlocked
     if (!confLockedCoins.empty()) {
         for (COutPoint outpoint : confLockedCoins)
-            pwalletMain->LockCoin(outpoint);
+            vpwallets.front()->LockCoin(outpoint);
     }
 
     // Filter

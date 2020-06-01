@@ -251,19 +251,19 @@ bool UpdateZPIVSupply(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
         for (const auto& m : listMints) {
             pindex->mapZerocoinSupply.at(m.GetDenomination())++;
             //Remove any of our own mints from the mintpool
-            if (!fJustCheck && pwalletMain) {
-                if (pwalletMain->IsMyMint(m.GetValue())) {
-                    pwalletMain->UpdateMint(m.GetValue(), pindex->nHeight, m.GetTxHash(), m.GetDenomination());
+            if (!fJustCheck && vpwallets.front()) {
+                if (vpwallets.front()->IsMyMint(m.GetValue())) {
+                    vpwallets.front()->UpdateMint(m.GetValue(), pindex->nHeight, m.GetTxHash(), m.GetDenomination());
                     // Add the transaction to the wallet
                     for (auto& tx : block.vtx) {
                         uint256 txid = tx.GetHash();
                         if (setAddedToWallet.count(txid))
                             continue;
                         if (txid == m.GetTxHash()) {
-                            CWalletTx wtx(pwalletMain, tx);
+                            CWalletTx wtx(vpwallets.front(), tx);
                             wtx.nTimeReceived = block.GetBlockTime();
                             wtx.SetMerkleBranch(block);
-                            pwalletMain->AddToWallet(wtx, false, nullptr);
+                            vpwallets.front()->AddToWallet(wtx, false);
                             setAddedToWallet.insert(txid);
                         }
                     }

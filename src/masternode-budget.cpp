@@ -205,15 +205,15 @@ void CBudgetManager::SubmitFinalBudget()
 
     if (!mapCollateralTxids.count(tempBudget.GetHash())) {
         CWalletTx wtx;
-        if (!pwalletMain->GetBudgetFinalizationCollateralTX(wtx, tempBudget.GetHash(), false)) {
+        if (!vpwallets.front()->GetBudgetFinalizationCollateralTX(wtx, tempBudget.GetHash(), false)) {
             LogPrint("mnbudget","CBudgetManager::SubmitFinalBudget - Can't make collateral transaction\n");
             return;
         }
 
         // Get our change address
-        CReserveKey reservekey(pwalletMain);
+        CReserveKey reservekey(vpwallets.front());
         // Send the tx to the network. Do NOT use SwiftTx, locking might need too much time to propagate, especially for testnet
-        pwalletMain->CommitTransaction(wtx, reservekey, "NO-ix");
+        vpwallets.front()->CommitTransaction(wtx, reservekey, "NO-ix");
         tx = (CTransaction)wtx;
         txidCollateral = tx.GetHash();
         mapCollateralTxids.insert(std::make_pair(tempBudget.GetHash(), txidCollateral));

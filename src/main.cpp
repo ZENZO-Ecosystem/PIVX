@@ -2180,18 +2180,10 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                             serial = spend.getCoinSerialNumber();
                         }
 
-                        if (!zerocoinDB->EraseCoinSpend(serial))
+                        if (!zerocoinDB->EraseCoinSpend(serial)) {
                             return error("failed to erase spent zerocoin in block");
-
-                        //if this was our spend, then mark it unspent now
-                        if (pwalletMain) {
-                            if (pwalletMain->IsMyZerocoinSpend(serial)) {
-                                if (!pwalletMain->SetMintUnspent(serial))
-                                    LogPrintf("%s: failed to automatically reset mint", __func__);
-                            }
                         }
                     }
-
                 }
             }
 
@@ -4145,14 +4137,16 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
         }
     }
 
-    if (pwalletMain) {
-        // If turned on MultiSend will send a transaction (or more) on the after maturity of a stake
-        if (pwalletMain->isMultiSendEnabled())
-            pwalletMain->MultiSend();
+    if (!vpwallets.empty()) {
+        for (CWalletRef pwallet : vpwallets) {
+            // If turned on MultiSend will send a transaction (or more) on the after maturity of a stake
+            if (pwallet->isMultiSendEnabled())
+                pwallet->MultiSend();
 
-        // If turned on Auto Combine will scan wallet for dust to combine
-        if (pwalletMain->fCombineDust)
-            pwalletMain->AutoCombineDust();
+            // If turned on Auto Combine will scan wallet for dust to combine
+            if (pwallet->fCombineDust)
+                pwallet->AutoCombineDust();
+        }
     }
 
     LogPrintf("%s : ACCEPTED Block %ld in %ld milliseconds with size=%d\n", __func__, GetHeight(), GetTimeMillis() - nStartTime,
