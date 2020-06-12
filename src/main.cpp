@@ -80,6 +80,8 @@ BlockMap mapBlockIndex;
 CChain chainActive;
 CBlockIndex* pindexBestHeader = NULL;
 int64_t nTimeBestReceived = 0;
+int64_t nMoneySupply;
+std::map<unsigned int, unsigned int> mapHashedBlocks;
 
 // Best block section
 Mutex g_best_block_mutex;
@@ -3872,11 +3874,13 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, 
     if (block.GetHash() != Params().GetConsensus().hashGenesisBlock && !CheckWork(block, pindexPrev))
         return false;
 
-    bool isPoS = block.IsProofOfStake();
-    if (isPoS) {
-        std::string strError;
-        if (!CheckProofOfStake(block, strError, pindexPrev))
-            return state.DoS(100, error("%s: proof of stake check failed (%s)", __func__, strError));
+    bool isPoS = false;
+    if (block.IsProofOfStake()) {
+        isPoS = true;
+        uint256 hashProofOfStake = 0;
+
+        if(!CheckProofOfStake(block, hashProofOfStake))
+            return state.DoS(100, error("%s: proof of stake check failed", __func__));
     }
 
     if (!AcceptBlockHeader(block, state, &pindex))

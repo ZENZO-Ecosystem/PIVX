@@ -279,7 +279,6 @@ libbitcoin_wallet_a_SOURCES = \
   forgeman.cpp \
   masternodeman.cpp \
   messagesigner.cpp \
-  legacy/stakemodifier.cpp \
   kernel.cpp \
   wallet/db.cpp \
   wallet/rpcdump.cpp \

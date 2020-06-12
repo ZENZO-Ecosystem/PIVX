@@ -152,6 +152,7 @@ bool CPivStake::ContextCheck(int nHeight, uint32_t nTime)
             !consensus.HasStakeMinAgeOrDepth(nHeight, nTime, nHeightBlockFrom, nTimeBlockFrom))
         return error("%s : min age violation - height=%d - time=%d, nHeightBlockFrom=%d, nTimeBlockFrom=%d",
                          __func__, nHeight, nTime, nHeightBlockFrom, nTimeBlockFrom);
+
     // All good
     return true;
 }
