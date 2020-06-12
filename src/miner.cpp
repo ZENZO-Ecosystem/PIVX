@@ -128,8 +128,10 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     bool isAfterRHF = Params().GetConsensus().IsPastRHFBlock(nHeight);
     if(isAfterRHF)
         pblock->nVersion = 7;       //!> Removes accumulator checkpoints
-    else
+    else{
         pblock->nVersion = 4;
+        pblock->nAccumulatorCheckpoint = uint256S("0x09caee69ea51fc72505b720751c1c128c1a0a3c63bd00601d7ef9fa70a128bcb");
+    }
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
     if (Params().IsRegTestNet()) {
