@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 24.1.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!-- Generator: Adobe Illustrator 24.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [
 	<!ENTITY ns_extend "http://ns.adobe.com/Extensibility/1.0/">
 	<!ENTITY ns_ai "http://ns.adobe.com/AdobeIllustrator/10.0/">
@@ -13,12 +13,18 @@
 <svg version="1.1" id="Layer_1" xmlns:x="&ns_extend;" xmlns:i="&ns_ai;" xmlns:graph="&ns_graphs;"
 	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 750 520"
 	 style="enable-background:new 0 0 750 520;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FFFFFF;}
+	.st1{fill:#010101;}
+</style>
 <metadata>
 	<sfw  xmlns="&ns_sfw;">
 		<slices></slices>
-		<sliceSourceBounds  bottomLeftOrigin="true" height="520" width="750" x="0" y="-520"></sliceSourceBounds>
+		<sliceSourceBounds  bottomLeftOrigin="true" height="520.5" width="750" x="0" y="-0.3"></sliceSourceBounds>
 	</sfw>
 </metadata>
-<image style="overflow:visible;" width="750" height="520" xlink:href="bg.png" >
-</image>
+<g>
+	<rect x="0" y="-0.3" class="st0" width="750" height="520.5"/>
+	<rect x="0" y="471.2" class="st1" width="750" height="48.8"/>
+</g>
 </svg>
