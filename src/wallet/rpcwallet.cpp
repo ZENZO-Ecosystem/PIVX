@@ -84,7 +84,7 @@ std::string AccountFromValue(const UniValue& value)
     return strAccount;
 }
 
-CBitcoinAddress GetNewAddressFromAccount(const std::string purpose, const UniValue &params,
+CBitcoinAddress GetNewAddressFromAccount(const std::string purpose, const UniValue &params, UniValue &obj,
         const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS)
 {
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -93,11 +93,32 @@ CBitcoinAddress GetNewAddressFromAccount(const std::string purpose, const UniVal
     if (!params.isNull() && params.size() > 0)
         strAccount = AccountFromValue(params[0]);
 
-    CBitcoinAddress address;
-    PairResult r = pwalletMain->getNewAddress(address, strAccount, purpose, addrType);
-    if(!r.result)
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, *r.status);
-    return address;
+    if (params.size() > 1) {
+        // TimeLocked address
+        int nLockTime = 0;
+        nLockTime = params[1].get_int();
+
+        // Sanity check
+        if (nLockTime <= 0)
+            throw std::runtime_error("Locktime MUST be an integer above 0 to create a time-locked address!");
+
+        CBitcoinAddress address;
+        CScript redeemScript;
+        CScriptID scriptHash;
+        PairResult r = pwalletMain->getNewTimeLockedAddress(address, redeemScript, scriptHash, nLockTime, strAccount, purpose, CChainParams::SCRIPT_ADDRESS);
+        if (!r.result)
+            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, *r.status);
+        obj.push_back(Pair("address", address.ToString()));
+        obj.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
+        return address;
+    } else {
+        // Standard address
+        CBitcoinAddress address;
+        PairResult r = pwalletMain->getNewAddress(address, strAccount, purpose, addrType);
+        if (!r.result)
+            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, *r.status);
+        return address;
+    }
 }
 
 /** Convert CAddressBookData to JSON record.  */
@@ -225,23 +246,39 @@ UniValue getaddressinfo(const UniValue& params, bool fHelp)
 
 UniValue getnewaddress(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() > 1)
+    if (fHelp || params.size() > 2)
         throw std::runtime_error(
-            "getnewaddress ( \"account\" )\n"
+            "getnewaddress ( \"account\" locktime)\n"
             "\nReturns a new ZENZO address for receiving payments.\n"
             "If 'account' is specified (DEPRECATED), it is added to the address book \n"
             "so payments received with the address will be credited to 'account'.\n"
 
             "\nArguments:\n"
             "1. \"account\"        (string, optional) DEPRECATED. The account name for the address to be linked to. if not provided, the default account \"\" is used. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created if there is no account by the given name.\n"
+            "2. locktime           (numeric, optional, default=0) Locktime. Non-0 value locks the address to be spendable until after a locking period. If locktime is less than 500000000, then it is processed as the block height at which the address becomes spendable. If locktime is greater than 500000000 then it is processed as a UNIX timestamp after which the coins attached to the address can be spent."
 
-            "\nResult:\n"
+            "\n"
+            "\nResult: (Single Parameter only; \"account\")\n"
             "\"zenzoaddress\"    (string) The new ZENZO address\n"
+
+            "\nResult: (Double Parameter only; \"account\" and locktime)"
+            "{\n"
+            "  \"address\":\"address\",   (string) The new ZENZO address\n"
+            "  \"redeemScript\":\"hex\",  (string) The hex encoded redeem script\n"
+            "}\n"
 
             "\nExamples:\n" +
             HelpExampleCli("getnewaddress", "") + HelpExampleRpc("getnewaddress", ""));
 
-    return GetNewAddressFromAccount(AddressBook::AddressBookPurpose::RECEIVE, params).ToString();
+    UniValue obj(UniValue::VOBJ);
+    if (params.size() > 1) {
+        // TimeLocked address (Returns a JSON object)
+        GetNewAddressFromAccount(AddressBook::AddressBookPurpose::RECEIVE, params, obj).ToString();
+        return obj;
+    } else {
+        // Standard address (Returns a plaintext address - for backwards compatibility)
+        return GetNewAddressFromAccount(AddressBook::AddressBookPurpose::RECEIVE, params, obj).ToString();
+    }
 }
 
 UniValue getnewstakingaddress(const UniValue& params, bool fHelp)
@@ -262,7 +299,8 @@ UniValue getnewstakingaddress(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("getnewstakingaddress", "") + HelpExampleRpc("getnewstakingaddress", ""));
 
-    return GetNewAddressFromAccount("coldstaking", params, CChainParams::STAKING_ADDRESS).ToString();
+    UniValue dummyObj(UniValue::VOBJ);
+    return GetNewAddressFromAccount("coldstaking", params, dummyObj, CChainParams::STAKING_ADDRESS).ToString();
 }
 
 UniValue delegatoradd(const UniValue& params, bool fHelp)
@@ -759,7 +797,8 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
 
     } else {
         // Get new owner address from keypool
-        ownerAddr = GetNewAddressFromAccount("delegated", NullUniValue);
+        UniValue dummyObj(UniValue::VOBJ);
+        ownerAddr = GetNewAddressFromAccount("delegated", NullUniValue, dummyObj);
         if (!ownerAddr.GetKeyID(ownerKey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get spend pubkey hash from owneraddress");
     }

@@ -368,6 +368,8 @@ public:
     PairResult getNewAddress(CBitcoinAddress& ret, const std::string addressLabel, const std::string purpose,
                                            const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS);
     PairResult getNewAddress(CBitcoinAddress& ret, std::string label);
+    PairResult getNewTimeLockedAddress(CBitcoinAddress& retAddress, CScript& retRedeemScript, CScriptID& retScriptHash, int nTimeLock, const std::string addressLabel,
+                                       const std::string purpose, const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS);
     PairResult getNewStakingAddress(CBitcoinAddress& ret, std::string label);
     int64_t GetKeyCreationTime(CPubKey pubkey);
     int64_t GetKeyCreationTime(const CBitcoinAddress& address);

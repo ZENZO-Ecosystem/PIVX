@@ -113,6 +113,37 @@ PairResult CWallet::getNewAddress(CBitcoinAddress& ret, const std::string addres
     return PairResult(true);
 }
 
+PairResult CWallet::getNewTimeLockedAddress(CBitcoinAddress& retAddress, CScript& retRedeemScript, CScriptID& retScriptHash, int nTimeLock,
+                                            const std::string addressLabel, const std::string purpose, const CChainParams::Base58Type addrType)
+{
+    LOCK(cs_wallet);
+
+    // Refill keypool if wallet is unlocked
+    if (!IsLocked())
+        TopUpKeyPool();
+
+    CPubKey newKey;
+    // Get a key
+    if (!GetKeyFromPool(newKey, false)) {
+        // inform the user to top-up the keypool or unlock the wallet
+        return PairResult(false, new std::string(
+                "Keypool ran out, please call keypoolrefill first, or unlock the wallet."));
+    }
+    CKeyID keyID = newKey.GetID();
+    CScript redeemScript = GetLockedScriptForDestination(keyID, nTimeLock);
+    CScriptID scriptHash(redeemScript);
+
+    if (!AddCScript(redeemScript))
+        throw std::runtime_error("CWallet::getNewTimeLockedAddress() : AddCScript failed");
+    if (!SetAddressBook(scriptHash, addressLabel, purpose))
+        throw std::runtime_error("CWallet::getNewTimeLockedAddress() : SetAddressBook failed");
+
+    retAddress = CBitcoinAddress(scriptHash, addrType);
+    retRedeemScript = redeemScript;
+    retScriptHash = scriptHash;
+    return PairResult(true);
+}
+
 CPubKey CWallet::GenerateNewKey(uint32_t nAccountIndex, bool fInternal)
 {
     AssertLockHeld(cs_wallet);                                 // mapKeyMetadata
