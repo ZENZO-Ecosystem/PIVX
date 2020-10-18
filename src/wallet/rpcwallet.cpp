@@ -686,7 +686,7 @@ UniValue burn(const UniValue& params, bool fHelp)
         throw std::runtime_error(
             "burn <amount> [\"optional string\"]\n"
             "This command is used to burn ZNZ and optionally write custom data into the burn transaction \n"
-            "<amount> is real and is rounded to the nearest decimal"
+            "<amount> is real and is rounded to the nearest zen (ex: 0.00000001)
             + HelpRequiringPassphrase());
 
     CScript scriptPubKey;
