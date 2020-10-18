@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2020 The PIVX developers
+// Copyright (c) 2018-2020 The ZENZO developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -684,8 +685,8 @@ UniValue burn(const UniValue& params, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw std::runtime_error(
             "burn <amount> [\"optional string\"]\n"
-            "This command is used to burn ZNZ, and optionally write custom data into the burn transaction \n"
-            "<amount> is real and is rounded to the nearest satoshi"
+            "This command is used to burn ZNZ and optionally write custom data into the burn transaction \n"
+            "<amount> is real and is rounded to the nearest decimal"
             + HelpRequiringPassphrase());
 
     CScript scriptPubKey;
