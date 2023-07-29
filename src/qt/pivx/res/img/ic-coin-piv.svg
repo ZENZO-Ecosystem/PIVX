@@ -11,8 +11,8 @@
 	<!ENTITY ns_adobe_xpath "http://ns.adobe.com/XPath/1.0/">
 ]>
 <svg version="1.1" id="ic_piv" xmlns:x="&ns_extend;" xmlns:i="&ns_ai;" xmlns:graph="&ns_graphs;"
-	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px"
-	 viewBox="0 0 24 24" style="enable-background:new 0 0 24 24;" xml:space="preserve">
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="150px" height="150px"
+	 viewBox="0 0 150 150" style="enable-background:new 0 0 150 150;" xml:space="preserve">
 <style type="text/css">
 	.st0{fill:none;}
 	.st1{fill:#8778DC;}
@@ -20,7 +20,7 @@
 <metadata>
 	<sfw  xmlns="&ns_sfw;">
 		<slices></slices>
-		<sliceSourceBounds  bottomLeftOrigin="true" height="24" width="24" x="0" y="0"></sliceSourceBounds>
+		<sliceSourceBounds  bottomLeftOrigin="true" height="118.4" width="117.8" x="-46.9" y="-47.2"></sliceSourceBounds>
 		<optimizationSettings>
 			<targetSettings  fileFormat="PNG24Format" targetSettingsID="0">
 				<PNG24Format  filtered="false" interlaced="true" matteColor="#FFFFFF" noMatteColor="true" transparency="true"></PNG24Format>
@@ -28,17 +28,18 @@
 		</optimizationSettings>
 	</sfw>
 </metadata>
-<path id="Rectangle_4543" class="st0" d="M0,0h24v24H0V0z"/>
+<path id="Rectangle_4543" class="st0" d="M63,63h24v24H63V63z"/>
 <g id="ZENZO_Icon__x28_2023_x29__00000111898753658281945370000009593638927034432911_">
 	<g>
-		<path class="st1" d="M12,1.9C6.5,1.9,2,6.5,2,12c0,5.5,4.5,10,10,10c5.5,0,10-4.5,10-10C22,6.5,17.5,1.9,12,1.9z M12,19.9
-			c-4.4,0-7.9-3.6-7.9-7.9c0-4.4,3.6-7.9,7.9-7.9c4.4,0,7.9,3.6,7.9,7.9C19.9,16.4,16.4,19.9,12,19.9z"/>
+		<path class="st1" d="M75,15.8c-32.4,0-58.9,27.1-58.9,59.5s26.5,58.9,58.9,58.9s58.9-26.5,58.9-58.9S107.4,15.8,75,15.8z
+			 M75,121.8c-25.9,0-46.5-21.2-46.5-46.5c0-25.9,21.2-46.5,46.5-46.5c25.9,0,46.5,21.2,46.5,46.5C121.5,101.2,100.9,121.8,75,121.8
+			z"/>
 	</g>
-	<path class="st1" d="M12,10.4L12,10.4c-0.9,0-1.6,0.7-1.6,1.6c0,0.9,0.7,1.6,1.6,1.6l0,0c0.9,0,1.6-0.7,1.6-1.6
-		C13.6,11.1,12.9,10.4,12,10.4z"/>
-	<path class="st1" d="M15.3,7.4l-8,0c0,1.3,1.1,2.4,2.3,2.4l0.3,0C10.5,9.3,11.2,9,12,9h0c1.2,0,2.3,0.8,2.8,1.8L16,9.6
-		c0.1-0.1,0.2-0.2,0.3-0.4c0.1-0.2,0.2-0.4,0.2-0.6C16.5,8,16,7.4,15.3,7.4z"/>
-	<path class="st1" d="M8.7,16.6l8,0c0-1.3-1.1-2.4-2.3-2.4l-0.3,0c-0.5,0.5-1.2,0.8-2,0.8h0c-1.2,0-2.3-0.8-2.8-1.8L8,14.4
-		c-0.1,0.1-0.2,0.2-0.3,0.4c-0.1,0.2-0.2,0.4-0.2,0.6C7.5,16,8,16.6,8.7,16.6z"/>
+	<path class="st1" d="M75,65.9L75,65.9c-5.3,0-9.4,4.1-9.4,9.4s4.1,9.4,9.4,9.4l0,0c5.3,0,9.4-4.1,9.4-9.4
+		C84.4,70,80.3,65.9,75,65.9z"/>
+	<path class="st1" d="M94.4,48.2H47.3c0,7.7,6.5,14.1,13.6,14.1h1.8c3.5-2.9,7.7-4.7,12.4-4.7l0,0c7.1,0,13.6,4.7,16.5,10.6l7.1-7.1
+		c0.6-0.6,1.2-1.2,1.8-2.4c0.6-1.2,1.2-2.4,1.2-3.5C101.5,51.7,98.6,48.2,94.4,48.2z"/>
+	<path class="st1" d="M55.6,102.4h47.1c0-7.7-6.5-14.1-13.6-14.1h-1.8c-2.9,2.9-7.1,4.7-11.8,4.7l0,0c-7.1,0-13.6-4.7-16.5-10.6
+		l-7.7,7.1c-0.6,0.6-1.2,1.2-1.8,2.4c-0.6,1.2-1.2,2.4-1.2,3.5C48.5,98.9,51.4,102.4,55.6,102.4z"/>
 </g>
 </svg>
