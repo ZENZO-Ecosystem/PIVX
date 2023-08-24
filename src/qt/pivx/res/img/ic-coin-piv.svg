@@ -1,20 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 24.0.2, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-<svg version="1.1" id="ic_piv" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+<!-- Generator: Adobe Illustrator 27.7.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [
+	<!ENTITY ns_extend "http://ns.adobe.com/Extensibility/1.0/">
+	<!ENTITY ns_ai "http://ns.adobe.com/AdobeIllustrator/10.0/">
+	<!ENTITY ns_graphs "http://ns.adobe.com/Graphs/1.0/">
+	<!ENTITY ns_vars "http://ns.adobe.com/Variables/1.0/">
+	<!ENTITY ns_imrep "http://ns.adobe.com/ImageReplacement/1.0/">
+	<!ENTITY ns_sfw "http://ns.adobe.com/SaveForWeb/1.0/">
+	<!ENTITY ns_custom "http://ns.adobe.com/GenericCustomNamespace/1.0/">
+	<!ENTITY ns_adobe_xpath "http://ns.adobe.com/XPath/1.0/">
+]>
+<svg version="1.1" id="ic_piv" xmlns:x="&ns_extend;" xmlns:i="&ns_ai;" xmlns:graph="&ns_graphs;"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px"
 	 viewBox="0 0 24 24" style="enable-background:new 0 0 24 24;" xml:space="preserve">
 <style type="text/css">
-	.st0{fill:#8778DC;}
-	.st1{fill:none;}
+	.st0{fill:none;}
+	.st1{fill:url(#SVGID_1_);}
+	.st2{fill:#FFFFFF;}
 </style>
+<metadata>
+	<sfw  xmlns="&ns_sfw;">
+		<slices></slices>
+		<sliceSourceBounds  bottomLeftOrigin="true" height="24" width="24" x="0" y="0"></sliceSourceBounds>
+		<optimizationSettings>
+			<targetSettings  fileFormat="PNG24Format" targetSettingsID="0">
+				<PNG24Format  filtered="false" interlaced="true" matteColor="#FFFFFF" noMatteColor="false" transparency="true">
+					</PNG24Format>
+			</targetSettings>
+		</optimizationSettings>
+	</sfw>
+</metadata>
+<path id="Rectangle_4543" class="st0" d="M0,0h24v24H0V0z"/>
 <g>
-	<path class="st0" d="M12,2C6.5,2,2,6.5,2,12c0,5.5,4.5,10,10,10c5.5,0,10-4.5,10-10C22,6.5,17.5,2,12,2z M12,19.9
-		c-4.3,0-7.9-3.5-7.9-7.9c0-4.3,3.5-7.9,7.9-7.9c4.3,0,7.9,3.5,7.9,7.9C19.9,16.3,16.3,19.9,12,19.9z"/>
-	<path class="st0" d="M12.1,9.1L12.1,9.1L12.1,9.1L12.1,9.1c0.8,0,1.5,0.3,2.1,0.9c0.3,0.3,0.5,0.6,0.6,1l1.3-1.3
-		c0.1-0.1,0.2-0.2,0.3-0.4c0.1-0.2,0.2-0.4,0.2-0.6c0-0.6-0.5-1.2-1.2-1.2l-7.9,0v2.3l2.7,0C10.7,9.3,11.4,9.1,12.1,9.1z"/>
-	<path class="st0" d="M12.1,10.4C12.1,10.4,12.1,10.4,12.1,10.4c-0.9,0-1.5,0.7-1.5,1.5c0,0.9,0.7,1.5,1.5,1.5c0,0,0,0,0,0
-		c0.9,0,1.5-0.7,1.5-1.5C13.6,11.1,12.9,10.4,12.1,10.4z"/>
-	<path class="st0" d="M12.1,14.9c-1.2,0-2.3-0.8-2.7-1.9l-1.5,1.5c-0.1,0.1-0.2,0.2-0.3,0.4c-0.1,0.2-0.2,0.4-0.2,0.6
-		c0,0.6,0.5,1.2,1.2,1.2l7.9,0l0-2.3l-2.6,0C13.4,14.6,12.8,14.9,12.1,14.9z"/>
+	<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="12" y1="-7.6667" x2="12" y2="-1.3311">
+		<stop  offset="0" style="stop-color:#00EBE8"/>
+		<stop  offset="0.5" style="stop-color:#55CBFF"/>
+		<stop  offset="1" style="stop-color:#988DFF"/>
+	</linearGradient>
+	<path class="st1" d="M23.8,12c0,6.5-5.3,11.8-11.8,11.8C5.5,23.8,0.2,18.5,0.2,12C0.2,5.5,5.5,0.2,12,0.2
+		C18.5,0.2,23.8,5.5,23.8,12z"/>
+	<g id="ZENZO_Icon__x28_2023_x29__00000116950098898485340480000010712561799711940785_">
+		<g>
+			<path class="st2" d="M12,1.4C6.2,1.4,1.4,6.2,1.4,12c0,5.8,4.7,10.6,10.6,10.6c5.8,0,10.6-4.7,10.6-10.6
+				C22.6,6.2,17.8,1.4,12,1.4z M12,20.3c-4.6,0-8.3-3.7-8.3-8.3c0-4.6,3.7-8.3,8.3-8.3c4.6,0,8.3,3.7,8.3,8.3
+				C20.3,16.6,16.6,20.3,12,20.3z"/>
+		</g>
+		<path class="st2" d="M12,10.4L12,10.4c-0.9,0-1.6,0.7-1.6,1.6c0,0.9,0.7,1.6,1.6,1.6l0,0c0.9,0,1.6-0.7,1.6-1.6
+			C13.6,11.1,12.9,10.4,12,10.4z"/>
+		<path class="st2" d="M15.5,7.2l-8.4,0c0,1.4,1.1,2.5,2.5,2.5l0.3,0c0.6-0.5,1.3-0.8,2.1-0.8h0c1.3,0,2.4,0.8,2.9,1.9l1.3-1.3
+			c0.1-0.1,0.2-0.3,0.3-0.4c0.1-0.2,0.2-0.4,0.2-0.6C16.7,7.8,16.2,7.2,15.5,7.2z"/>
+		<path class="st2" d="M8.5,16.8l8.4,0c0-1.4-1.1-2.5-2.5-2.5l-0.3,0c-0.6,0.5-1.3,0.8-2.1,0.8h0c-1.3,0-2.4-0.8-2.9-1.9l-1.3,1.3
+			c-0.1,0.1-0.2,0.3-0.3,0.4c-0.1,0.2-0.2,0.4-0.2,0.6C7.3,16.2,7.8,16.8,8.5,16.8z"/>
+	</g>
 </g>
-<path id="Rectangle_4543" class="st1" d="M0,0h24v24H0V0z"/>
 </svg>
