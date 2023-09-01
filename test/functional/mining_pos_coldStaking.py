@@ -12,7 +12,7 @@ from test_framework.mininode import network_thread_start
 from test_framework.pivx_node import PivxTestNode
 from test_framework.script import CScript, OP_CHECKSIG
 from test_framework.test_framework import PivxTestFramework
-from test_framework.util import connect_nodes_bi, p2p_port, bytes_to_hex_str, set_node_times, \
+from test_framework.util import connect_nodes_bi, p2p_port, set_node_times, \
     assert_equal, assert_greater_than, sync_blocks, sync_mempools, assert_raises_rpc_error
 
 # filter utxos based on first 5 bytes of scriptPubKey
@@ -256,7 +256,7 @@ class PIVX_ColdStakingTest(PivxTestFramework):
         new_block = self.stake_next_block(1, stakeInputs, self.mocktime, staker_privkey)
         self.log.info("New block created (rawtx) by cold-staking. Trying to submit...")
         # Try to submit the block
-        ret = self.nodes[1].submitblock(bytes_to_hex_str(new_block.serialize()))
+        ret = self.nodes[1].submitblock(new_block.serialize().hex())
         self.log.info("Block %s submitted." % new_block.hash)
         assert(ret is None)
 
@@ -285,7 +285,7 @@ class PIVX_ColdStakingTest(PivxTestFramework):
         new_block = self.stake_next_block(1, stakeInputs, self.mocktime, "")
         self.log.info("New block created (rawtx) by cold-staking. Trying to submit...")
         # Try to submit the block
-        ret = self.nodes[1].submitblock(bytes_to_hex_str(new_block.serialize()))
+        ret = self.nodes[1].submitblock(new_block.serialize().hex())
         self.log.info("Block %s submitted." % new_block.hash)
         assert("rejected" in ret)
 
@@ -309,7 +309,7 @@ class PIVX_ColdStakingTest(PivxTestFramework):
         self.add_output_to_coinstake(new_block, 100)
         self.log.info("New block created (rawtx) by cold-staking. Trying to submit...")
         # Try to submit the block
-        ret = self.nodes[1].submitblock(bytes_to_hex_str(new_block.serialize()))
+        ret = self.nodes[1].submitblock(new_block.serialize().hex())
         self.log.info("Block %s submitted." % new_block.hash)
         assert_equal(ret, "bad-p2cs-outs")
 
@@ -433,7 +433,7 @@ class PIVX_ColdStakingTest(PivxTestFramework):
         prevout.deserialize_uniqueness(BytesIO(block.prevoutStake))
         coinstake.vin[0] = CTxIn(prevout)
         stake_tx_signed_raw_hex = self.nodes[peer].signrawtransaction(
-            bytes_to_hex_str(coinstake.serialize()))['hex']
+            coinstake.serialize().hex())['hex']
         block.vtx[1] = CTransaction()
         block.vtx[1].from_hex(stake_tx_signed_raw_hex)
         # re-sign block
