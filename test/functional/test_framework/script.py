@@ -13,19 +13,24 @@ import hashlib
 import struct
 
 from .bignum import bn2vch
+from .messages import CTransaction, CTxOut, sha256, hash256
+from .ripemd160 import ripemd160
+from typing import List, Dict
+
 
 MAX_SCRIPT_ELEMENT_SIZE = 520
+MAX_PUBKEYS_PER_MULTISIG = 20
 
-OPCODE_NAMES = {}
+OPCODE_NAMES = {}  # type: Dict[CScriptOp, str]
 
 def hash160(s):
-    return hashlib.new('ripemd160', sha256(s)).digest()
+    return ripemd160(sha256(s))
 
 
-_opcode_instances = []
+_opcode_instances = []  # type: List[CScriptOp]
 class CScriptOp(int):
     """A single script opcode"""
-    __slots__ = []
+    __slots__ = ()
 
     @staticmethod
     def encode_op_pushdata(d):
