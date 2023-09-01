@@ -909,9 +909,11 @@ class PivxTestFramework():
             stakeableUtxos,
             btime=None,
             privKeyWIF=None,
-            vtx=[],
+            vtx=None,
             fDoubleSpend=False):
         """ Calls stake_block appending to the current tip"""
+        if vtx is None:
+            vtx = []
         assert_greater_than(len(self.nodes), node_id)
         nHeight = self.nodes[node_id].getblockcount()
         prevHhash = self.nodes[node_id].getblockhash(nHeight)
