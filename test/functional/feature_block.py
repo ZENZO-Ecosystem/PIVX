@@ -526,7 +526,7 @@ class FullBlockTest(ComparisonTestFramework):
         tx_new = None
         tx_last = tx
         total_size=len(b39.serialize())
-        while(total_size < MAX_BLOCK_BASE_SIZE):
+        while total_size < MAX_BLOCK_BASE_SIZE:
             tx_new = create_tx(tx_last, 1, 1, p2sh_script)
             tx_new.vout.append(CTxOut(tx_last.vout[1].nValue - 1, CScript([OP_TRUE])))
             tx_new.rehash()
