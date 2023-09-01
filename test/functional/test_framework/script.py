@@ -10,14 +10,6 @@ This file is modified from python-bitcoinlib.
 from .mininode import CTransaction, CTxOut, sha256, hash256, uint256_from_str, ser_uint256, ser_string
 import hashlib
 
-import sys
-bchr = chr
-bord = ord
-if sys.version > '3':
-    long = int
-    bchr = lambda x: bytes([x])
-    bord = lambda x: x
-
 import struct
 
 from .bignum import bn2vch
