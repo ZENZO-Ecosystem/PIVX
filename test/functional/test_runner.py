@@ -136,7 +136,8 @@ EXTENDED_SCRIPTS = [
     # These tests are not run by the travis build process.
     # Longest test should go first, to favor running tests in parallel
     # vv Tests less than 20m vv
-    #'feature_fee_estimation.py',
+    'feature_dbcrash.py',
+    'feature_fee_estimation.py',                # ~ 360 sec
     # vv Tests less than 5m vv
     # vv Tests less than 2m vv
     #'p2p_timeouts.py',
