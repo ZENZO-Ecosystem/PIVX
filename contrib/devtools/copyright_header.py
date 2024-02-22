@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2016-2018 The Bitcoin Core developers
 # Copyright (c) 2018-2019 The PIVX developers
+# Copyright (c) 2018-2024 The ZENZO Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -120,6 +121,7 @@ EXPECTED_HOLDER_NAMES = [
     "The Dash Developers\n",
     "The Dash Core developers\n",
     "The PIVX developers\n",
+    "The ZENZO Core developers\n",
     "The PPCoin developers\n",
     "The NovaCoin Developers",
     "The BlackCoin Developers\n",

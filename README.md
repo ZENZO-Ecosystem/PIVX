@@ -2,8 +2,8 @@
 
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE) [![Chat on Discord](https://img.shields.io/badge/chat-Discord-brightgreen.svg)](https://discord.gg/invite/nzGapAh) [![GitHub version](https://badge.fury.io/gh/Zenzo-Ecosystem%2FZENZO-Core.svg)](https://badge.fury.io/gh/Zenzo-Ecosystem%2FZENZO-Core)
 
-ZENZO(ZNZ) is an open-source digital
-currency based on Bitcoin's blockchain technology, Dash’s Masternodes and 
+ZENZO (ZNZ) is an open-source, digital
+currency based on Bitcoin's blockchain technology, Dash’s Masternodes, and 
 PIVX’s general Codebase. Each of these elements was combined
 to create a powerful and innovative technology. ZENZO is also powered
 by Blackcoin Proof-of-Stake 3.0 and Bitcoin Core 0.10x code base, using Xevan
@@ -19,8 +19,6 @@ Tor network for greater privacy. All transactions on the network are fully
 verifiable with a built-in blockchain explorer within the software itself. The
 block reward ratio of staking to masternodes is 35:65.
 
-The ZENZO(ZNZ) digital currency powers the monetary system behind ZENZO’s many
-use cases, such as the [ZENZO Arcade](https://arcade.zenzo.io) and the [ZENZO SDK](https://github.com/ZENZO-Ecosystem/ZENZO-SDK-NodeJS)
 
 **For more information, please visit [zenzo.io](https://www.zenzo.io).**
 
@@ -72,6 +70,6 @@ use cases, such as the [ZENZO Arcade](https://arcade.zenzo.io) and the [ZENZO SD
 ***
 
 
-*Special thanks to ZENZO Core Developers (including [@JSKitty](https://github.com/JSKitty))* and other contributors: 
+*Special thanks to ZENZO Core Developers and other contributors:
 
-[@liquid369](https://github.com/Liquid369), [@AkshayNexus](https://github.com/akshaynexus), [@j00v](https://github.com/j00v), [@sicXnull](https://github.com/sicXnull)
+[@JSKitty](https://github.com/JSKitty), [@liquid369](https://github.com/Liquid369), [@AkshayNexus](https://github.com/akshaynexus), [@j00v](https://github.com/j00v), [@sicXnull](https://github.com/sicXnull)
