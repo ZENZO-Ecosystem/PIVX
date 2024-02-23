@@ -136,7 +136,8 @@ EXTENDED_SCRIPTS = [
     # These tests are not run by the travis build process.
     # Longest test should go first, to favor running tests in parallel
     # vv Tests less than 20m vv
-    #'feature_fee_estimation.py',
+    'feature_dbcrash.py',
+    'feature_fee_estimation.py',                # ~ 360 sec
     # vv Tests less than 5m vv
     # vv Tests less than 2m vv
     #'p2p_timeouts.py',
@@ -270,8 +271,10 @@ def main():
               passon_args, args.combinedlogslen,
               args.keepcache)
 
-def run_tests(test_list, src_dir, build_dir, exeext, tmpdir, jobs=1, enable_coverage=False, args=[], combined_logs_len=0, keep_cache=False):
-    # Warn if pivxd is already running (unix only)
+def run_tests(test_list, src_dir, build_dir, exeext, tmpdir, jobs=1, enable_coverage=False, args=None, combined_logs_len=0, keep_cache="rewrite"):
+        # Warn if zenzod is already running (unix only)
+    if args is None:
+        args = []
     try:
         if subprocess.check_output(["pidof", "pivxd"]) is not None:
             print("%sWARNING!%s There is already a pivxd process running on this system. Tests may fail unexpectedly due to resource contention!" % (BOLD[1], BOLD[0]))
@@ -396,7 +399,7 @@ class TestHandler:
     """
 
     def __init__(self, num_tests_parallel, tests_dir, tmpdir, test_list=None, flags=None):
-        assert(num_tests_parallel >= 1)
+        assert num_tests_parallel >= 1
         self.num_jobs = num_tests_parallel
         self.tests_dir = tests_dir
         self.tmpdir = tmpdir

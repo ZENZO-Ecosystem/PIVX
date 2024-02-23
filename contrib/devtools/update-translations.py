@@ -104,7 +104,7 @@ def check_format_specifiers(source, translation, errors, numerus):
     source_f = split_format_specifiers(find_format_specifiers(source))
     # assert that no source messages contain both Qt and strprintf format specifiers
     # if this fails, go change the source as this is hacky and confusing!
-    assert(not(source_f[0] and source_f[1]))
+    assert not source_f[0] and source_f[1]
     try:
         translation_f = split_format_specifiers(find_format_specifiers(translation))
     except IndexError:
@@ -127,7 +127,7 @@ def all_ts_files(suffix='', include_source=False):
         if suffix: # remove provided suffix
             filename = filename[0:-len(suffix)]
         filepath = os.path.join(LOCALE_DIR, filename)
-        yield(filename, filepath)
+        yield filename, filepath
 
 FIX_RE = re.compile(b'[\x00-\x09\x0b\x0c\x0e-\x1f]')
 def remove_invalid_characters(s):
@@ -238,7 +238,7 @@ def update_build_systems():
     filename_lang.sort(key=lambda x: x[0])
 
     # update qrc locales
-    with open('src/qt/zenzo_locale.qrc', 'w') as f:
+    with open('src/qt/zenzo_locale.qrc', 'w', encoding="utf8") as f:
         f.write('<!DOCTYPE RCC><RCC version="1.0">\n')
         f.write('    <qresource prefix="/translations">\n')
         for (filename, basename, lang) in filename_lang:
@@ -247,7 +247,7 @@ def update_build_systems():
         f.write('</RCC>\n')
 
     # update Makefile include
-    with open('src/Makefile.qt_locale.include', 'w') as f:
+    with open('src/Makefile.qt_locale.include', 'w', encoding="utf8") as f:
         f.write('QT_TS = \\\n')
         f.write(' \\\n'.join(f'  qt/locale/{filename}' for (filename, basename, lang) in filename_lang))
         f.write('\n') # make sure last line doesn't end with a backslash
