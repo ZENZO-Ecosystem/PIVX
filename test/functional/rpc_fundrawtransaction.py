@@ -223,7 +223,7 @@ class RawTransactionsTest(PivxTestFramework):
         except JSONRPCException as e:
             assert('changePosition out of bounds' == e.error['message'])
         else:
-            assert(False)
+            assert False
         rawtxfund = self.nodes[2].fundrawtransaction(rawtx, {'changeAddress': change, 'changePosition': 0})
         dec_tx  = self.nodes[2].decoderawtransaction(rawtxfund['hex'])
         out = dec_tx['vout'][0];
