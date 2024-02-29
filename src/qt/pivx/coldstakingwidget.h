@@ -1,4 +1,5 @@
 // Copyright (c) 2019 The PIVX developers
+// Copyright (c) 2018-2024 The ZENZO developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -123,6 +124,7 @@ private:
     void onLabelClicked(QString dialogTitle, const QModelIndex &index, const bool& isMyColdStakingAddresses);
     void updateStakingTotalLabel();
     void sortAddresses();
+    void setCoinControlPayAmounts();
 };
 
 #endif // COLDSTAKINGWIDGET_H

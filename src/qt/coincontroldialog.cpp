@@ -34,7 +34,6 @@
 #include <QString>
 #include <QTreeWidget>
 
-QList<CAmount> CoinControlDialog::payAmounts;
 CCoinControl* CoinControlDialog::coinControl = new CCoinControl();
 
 
@@ -575,7 +574,7 @@ void CoinControlDialog::updateLabels()
     // nPayAmount
     CAmount nPayAmount = 0;
     bool fDust = false;
-    Q_FOREACH (const CAmount& amount, CoinControlDialog::payAmounts) {
+    Q_FOREACH (const CAmount& amount, payAmounts) {
         nPayAmount += amount;
 
         if (amount > 0) {
@@ -640,7 +639,7 @@ void CoinControlDialog::updateLabels()
     // calculation
     if (nQuantity > 0) {
         // Bytes
-        nBytes = nBytesInputs + ((CoinControlDialog::payAmounts.size() > 0 ? CoinControlDialog::payAmounts.size() + 1 : 2) * 34) + 10; // always assume +1 output for change here
+        nBytes = nBytesInputs + ((payAmounts.size() > 0 ? CoinControlDialog::payAmounts.size() + 1 : 2) * 34) + 10; // always assume +1 output for change here
 
         // Priority
         double mempoolEstimatePriority = mempool.estimatePriority(nTxConfirmTarget);
@@ -962,4 +961,14 @@ void CoinControlDialog::inform(const QString& text)
     snackBar->setText(text);
     snackBar->resize(this->width(), snackBar->height());
     openDialog(snackBar, this);
+}
+
+void CoinControlDialog::clearPayAmounts()
+{
+    payAmounts.clear();
+}
+
+void CoinControlDialog::addPayAmount(const CAmount& amount)
+{
+    payAmounts.push_back(amount);
 }

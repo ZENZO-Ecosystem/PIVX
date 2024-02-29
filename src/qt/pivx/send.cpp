@@ -1,4 +1,5 @@
 // Copyright (c) 2019-2020 The PIVX developers
+// Copyright (c) 2018-2024 The ZENZO developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -498,11 +499,22 @@ void SendWidget::onCoinControlClicked(){
         } else {
             coinControlDialog->refreshDialog();
         }
+        setCoinControlPayAmounts();
         coinControlDialog->exec();
         ui->btnCoinControl->setActive(CoinControlDialog::coinControl->HasSelected());
         refreshAmounts();
     } else {
         inform(tr("You don't have any ZNZ to select."));
+    }
+}
+
+void SendWidget::setCoinControlPayAmounts()
+{
+    if (!coinControlDialog) return;
+    coinControlDialog->clearPayAmounts();
+    QMutableListIterator<SendMultiRow*> it(entries);
+    while (it.hasNext()) {
+        coinControlDialog->addPayAmount(it.next()->getAmountValue());
     }
 }
 

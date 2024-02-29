@@ -93,6 +93,7 @@ private:
     bool send(QList<SendCoinsRecipient> recipients);
     void updateEntryLabels(QList<SendCoinsRecipient> recipients);
 
+    void setCoinControlPayAmounts();
 };
 
 #endif // SEND_H
