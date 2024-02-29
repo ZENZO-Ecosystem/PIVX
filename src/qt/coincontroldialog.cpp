@@ -1,6 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2020 The PIVX developers
+// Copyright (c) 2018-2024 The ZENZO developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -222,7 +223,7 @@ void CoinControlDialog::setModel(WalletModel* model)
     if (model && model->getOptionsModel() && model->getAddressTableModel()) {
         updateView();
         updateLabelLocked();
-        CoinControlDialog::updateLabels(model, this);
+        updateLabels();
         updateDialogLabels();
     }
 }
@@ -245,7 +246,7 @@ void CoinControlDialog::buttonSelectAllClicked()
         ui->pushButtonSelectAll->setText(tr("Unselect all"));
     }
     fSelectAllToggled = !fSelectAllToggled;
-    CoinControlDialog::updateLabels(model, this);
+    updateLabels();
     updateDialogLabels();
 }
 
@@ -276,7 +277,7 @@ void CoinControlDialog::buttonToggleLockClicked()
             updateLabelLocked();
         }
         ui->treeWidget->setEnabled(true);
-        CoinControlDialog::updateLabels(model, this);
+        updateLabels();
         updateDialogLabels();
     } else {
         QMessageBox msgBox;
@@ -480,7 +481,7 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
 
         // selection changed -> update labels
         if (ui->treeWidget->isEnabled()){ // do not update on every click for (un)select all
-            CoinControlDialog::updateLabels(model, this);
+            updateLabels();
             updateDialogLabels();
         }
     }
@@ -538,7 +539,7 @@ void CoinControlDialog::updateDialogLabels()
 {
 
     if (this->parentWidget() == nullptr) {
-        CoinControlDialog::updateLabels(model, this);
+        updateLabels();
         return;
     }
 
@@ -567,7 +568,7 @@ void CoinControlDialog::updateDialogLabels()
     }
 }
 
-void CoinControlDialog::updateLabels(WalletModel* model, QDialog* dialog)
+void CoinControlDialog::updateLabels()
 {
     if (!model)
         return;
@@ -691,38 +692,32 @@ void CoinControlDialog::updateLabels(WalletModel* model, QDialog* dialog)
     if (model && model->getOptionsModel())
         nDisplayUnit = model->getOptionsModel()->getDisplayUnit();
 
-    QLabel* l1 = dialog->findChild<QLabel*>("labelCoinControlQuantity");
-    QLabel* l2 = dialog->findChild<QLabel*>("labelCoinControlAmount");
-    QLabel* l3 = dialog->findChild<QLabel*>("labelCoinControlFee");
-    QLabel* l4 = dialog->findChild<QLabel*>("labelCoinControlAfterFee");
-    QLabel* l5 = dialog->findChild<QLabel*>("labelCoinControlBytes");
-    QLabel* l7 = dialog->findChild<QLabel*>("labelCoinControlLowOutput");
-    QLabel* l8 = dialog->findChild<QLabel*>("labelCoinControlChange");
-
     // enable/disable "dust" and "change"
-    dialog->findChild<QLabel*>("labelCoinControlLowOutputText")->setEnabled(nPayAmount > 0);
-    dialog->findChild<QLabel*>("labelCoinControlLowOutput")->setEnabled(nPayAmount > 0);
-    dialog->findChild<QLabel*>("labelCoinControlChangeText")->setEnabled(nPayAmount > 0);
-    dialog->findChild<QLabel*>("labelCoinControlChange")->setEnabled(nPayAmount > 0);
+    const bool hasPayAmount = nPayAmount > 0;
+    ui->labelCoinControlLowOutputText->setEnabled(hasPayAmount);
+    ui->labelCoinControlLowOutput->setEnabled(hasPayAmount);
+    ui->labelCoinControlChangeText->setEnabled(hasPayAmount);
+    ui->labelCoinControlChange->setEnabled(hasPayAmount);
 
     // stats
-    l1->setText(QString::number(nQuantity));                            // Quantity
-    l2->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nAmount));   // Amount
-    l3->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nPayFee));   // Fee
-    l4->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nAfterFee)); // After Fee
-    l5->setText(((nBytes > 0) ? "~" : "") + QString::number(nBytes));   // Bytes
-    l7->setText(fDust ? tr("yes") : tr("no"));                          // Dust
-    l8->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nChange));   // Change
+    ui->labelCoinControlQuantity->setText(QString::number(nQuantity));
+    ui->labelCoinControlAmount->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nAmount));
+    ui->labelCoinControlFee->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nPayFee));
+    ui->labelCoinControlAfterFee->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nAfterFee));
+    ui->labelCoinControlBytes->setText(((nBytes > 0) ? "~" : "") + QString::number(nBytes));
+    ui->labelCoinControlLowOutput->setText(fDust ? tr("yes") : tr("no"));
+    ui->labelCoinControlChange->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nChange));
+
     if (nPayFee > 0 && !(payTxFee.GetFeePerK() > 0 && fPayAtLeastCustomFee && nBytes < 1000)) {
-        l3->setText("~" + l3->text());
-        l4->setText("~" + l4->text());
+        ui->labelCoinControlFee->setText("~" + ui->labelCoinControlFee->text());
+        ui->labelCoinControlAfterFee->setText("~" + ui->labelCoinControlAfterFee->text());
         if (nChange > 0)
-            l8->setText("~" + l8->text());
+            ui->labelCoinControlChange->setText("~" + ui->labelCoinControlChange->text());
     }
 
     // turn labels "red"
-    l5->setStyleSheet((nBytes >= MAX_FREE_TRANSACTION_CREATE_SIZE) ? "color:red;" : ""); // Bytes >= 1000
-    l7->setStyleSheet((fDust) ? "color:red;" : "");                                      // Dust = "yes"
+    ui->labelCoinControlBytes->setStyleSheet((nBytes >= MAX_FREE_TRANSACTION_CREATE_SIZE) ? "color:red;" : "");     // Bytes >= 1000
+    ui->labelCoinControlLowOutput->setStyleSheet((fDust) ? "color:red;" : "");                                      // Dust = "yes"
 
     // tool tips
     QString toolTip1 = tr("This label turns red, if the transaction size is greater than 1000 bytes.") + "<br /><br />";
@@ -741,21 +736,21 @@ void CoinControlDialog::updateLabels(WalletModel* model, QDialog* dialog)
         dFeeVary = (double)std::max(CWallet::minTxFee.GetFeePerK(), payTxFee.GetFeePerK()) / 1000;
     else
         dFeeVary = (double)std::max(CWallet::minTxFee.GetFeePerK(), mempool.estimateFee(nTxConfirmTarget).GetFeePerK()) / 1000;
-    QString toolTip4 = tr("Can vary +/- %1 uZNZ per input.").arg(dFeeVary);
+    QString toolTip4 = tr("Can vary +/- %1 u%2 per input.").arg(dFeeVary).arg(CURRENCY_UNIT.c_str());
 
-    l3->setToolTip(toolTip4);
-    l4->setToolTip(toolTip4);
-    l5->setToolTip(toolTip1);
-    l7->setToolTip(toolTip3);
-    l8->setToolTip(toolTip4);
-    dialog->findChild<QLabel*>("labelCoinControlFeeText")->setToolTip(l3->toolTip());
-    dialog->findChild<QLabel*>("labelCoinControlAfterFeeText")->setToolTip(l4->toolTip());
-    dialog->findChild<QLabel*>("labelCoinControlBytesText")->setToolTip(l5->toolTip());
-    dialog->findChild<QLabel*>("labelCoinControlLowOutputText")->setToolTip(l7->toolTip());
-    dialog->findChild<QLabel*>("labelCoinControlChangeText")->setToolTip(l8->toolTip());
+    ui->labelCoinControlFee->setToolTip(toolTip4);
+    ui->labelCoinControlAfterFee->setToolTip(toolTip4);
+    ui->labelCoinControlBytes->setToolTip(toolTip1);
+    ui->labelCoinControlLowOutput->setToolTip(toolTip3);
+    ui->labelCoinControlChange->setToolTip(toolTip4);
+    ui->labelCoinControlFeeText->setToolTip(ui->labelCoinControlFee->toolTip());
+    ui->labelCoinControlAfterFeeText->setToolTip(ui->labelCoinControlAfterFee->toolTip());
+    ui->labelCoinControlBytesText->setToolTip(ui->labelCoinControlBytes->toolTip());
+    ui->labelCoinControlLowOutputText->setToolTip(ui->labelCoinControlLowOutput->toolTip());
+    ui->labelCoinControlChangeText->setToolTip(ui->labelCoinControlChange->toolTip());
 
     // Insufficient funds
-    QLabel* label = dialog->findChild<QLabel*>("labelCoinControlInsuffFunds");
+    QLabel* label = findChild<QLabel*>("labelCoinControlInsuffFunds");
     if (label)
         label->setVisible(nChange < 0);
 }
@@ -960,7 +955,7 @@ void CoinControlDialog::refreshDialog()
 {
     updateView();
     updateLabelLocked();
-    CoinControlDialog::updateLabels(model, this);
+    updateLabels();
     updateDialogLabels();
 }
 

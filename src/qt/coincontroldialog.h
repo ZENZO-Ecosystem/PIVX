@@ -1,5 +1,6 @@
 // Copyright (c) 2011-2013 The Bitcoin developers
 // Copyright (c) 2017-2020 The PIVX developers
+// Copyright (c) 2018-2024 The ZENZO developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -49,11 +50,10 @@ public:
 
     void setModel(WalletModel* model);
     void updateDialogLabels();
+    void updateLabels();
     void updateView();
     void refreshDialog();
 
-    // static because also called from sendcoinsdialog
-    static void updateLabels(WalletModel*, QDialog*);
     static QString getPriorityLabel(double dPriority, double mempoolEstimatePriority);
 
     static QList<CAmount> payAmounts;
