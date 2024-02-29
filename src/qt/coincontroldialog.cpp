@@ -45,10 +45,10 @@ bool CCoinControlWidgetItem::operator<(const QTreeWidgetItem &other) const {
 }
 
 
-CoinControlDialog::CoinControlDialog(QWidget* parent, bool _forDelegation) : QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
+CoinControlDialog::CoinControlDialog(QWidget* parent, bool _fMultisigEnabled) : QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
                                                         ui(new Ui::CoinControlDialog),
                                                         model(0),
-                                                        forDelegation(_forDelegation)
+                                                        fMultisigEnabled(_fMultisigEnabled)
 {
     ui->setupUi(this);
 
@@ -645,7 +645,7 @@ void CoinControlDialog::updateLabels()
     const int P2CS_OUT_SIZE = 61;
     if (nQuantity > 0) {
         // Bytes: nBytesInputs + (num_of_outputs * bytes_per_output)
-        nBytes = nBytesInputs + std::max(1, payAmounts.size()) * (forDelegation ? P2CS_OUT_SIZE : P2PKH_OUT_SIZE);
+        nBytes = nBytesInputs + std::max(1, payAmounts.size()) * (fMultisigEnabled ? P2CS_OUT_SIZE : P2PKH_OUT_SIZE);
         // always assume +1 (p2pkh) output for change here
         nBytes += P2PKH_OUT_SIZE;
         // nVersion, nLockTime and vin/vout len sizes
