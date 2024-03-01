@@ -1,6 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2016 The Dash developers
-// Copyright (c) 2016-2020 The PIVX developers
+// Copyright (c) 2016-2024 The PIVX Core developers
+// Copyright (c) 2018-2024 The ZENZO Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -455,13 +456,13 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
     case TransactionRecord::SendToSelf:
         return tr("Payment to yourself");
     case TransactionRecord::StakeMint:
-        return tr("ZNZ Stake");
+        return tr("%1 Stake").arg(CURRENCY_UNIT.c_str());
     case TransactionRecord::SuperStake:
         return tr("ZNZ SuperStake");
     case TransactionRecord::StakeDelegated:
-        return tr("ZNZ Cold Stake");
+        return tr("%1 Cold Stake").arg(CURRENCY_UNIT.c_str());
     case TransactionRecord::StakeHot:
-        return tr("ZNZ Stake on behalf of");
+        return tr("%1 Stake on behalf of").arg(CURRENCY_UNIT.c_str());
     case TransactionRecord::P2CSDelegationSent:
     case TransactionRecord::P2CSDelegationSentOwner:
     case TransactionRecord::P2CSDelegation:

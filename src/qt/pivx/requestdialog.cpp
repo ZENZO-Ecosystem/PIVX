@@ -1,4 +1,5 @@
-// Copyright (c) 2019 The PIVX developers
+// Copyright (c) 2019-2024 The PIVX Core developers
+// Copyright (c) 2018-2024 The ZENZO Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -127,7 +128,7 @@ void RequestDialog::onNextClicked(){
         PairResult r(false);
         if (this->isPaymentRequest) {
             r = walletModel->getNewAddress(address, label);
-            title = "Request for " + BitcoinUnits::format(displayUnit, value, false, BitcoinUnits::separatorAlways) + " ZNZ";
+            title = tr("Request for ") + BitcoinUnits::format(displayUnit, value, false, BitcoinUnits::separatorAlways) + " " + QString(CURRENCY_UNIT.c_str());
         } else {
             r = walletModel->getNewStakingAddress(address, label);
             title = "Cold Staking Address Generated";

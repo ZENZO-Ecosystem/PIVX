@@ -1,4 +1,5 @@
-// Copyright (c) 2019-2020 The PIVX developers
+// Copyright (c) 2017-2024 The PIVX Core developers
+// Copyright (c) 2018-2024 The ZENZO Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -485,7 +486,7 @@ void MasterNodesWidget::onCreateMNClicked(){
     }
 
     if (walletModel->getBalance() <= (COIN * 15000)) {
-        inform(tr("Not enough balance to create a masternode, 15,000 ZNZ required."));
+        inform(tr("Not enough balance to create a masternode, 15,000 %1 required.").arg(CURRENCY_UNIT.c_str()));
         return;
     }
     showHideOp(true);

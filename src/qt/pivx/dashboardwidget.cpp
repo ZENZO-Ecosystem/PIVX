@@ -1,4 +1,5 @@
-// Copyright (c) 2019-2020 The PIVX developers
+// Copyright (c) 2019-2024 The PIVX developers
+// Copyright (c) 2018-2024 The ZENZO developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -128,7 +129,6 @@ DashboardWidget::DashboardWidget(ZENZOGUI* parent) :
 
     ui->btnHowTo->setText(tr("How to get ZNZ"));
     setCssBtnSecondary(ui->btnHowTo);
-
 
     setCssProperty(ui->labelEmptyChart, "text-empty");
     ui->labelMessageEmpty->setText(tr("You can verify the staking activity in the status bar at the top right of the wallet.\nIt will start automatically as soon as the wallet has enough confirmations on any unspent balances, and the wallet has synced."));
@@ -617,8 +617,8 @@ void DashboardWidget::onChartRefreshed() {
         axisX->clear();
     }
     // init sets
-    set0 = new QBarSet("Stakes");
-    set1 = new QBarSet("MN");
+    set0 = new QBarSet(CURRENCY_UNIT.c_str());
+    set1 = new QBarSet("z" + QString(CURRENCY_UNIT.c_str()));
     set0->setColor(QColor(92,75,125));
     set1->setColor(QColor(176,136,255));
 

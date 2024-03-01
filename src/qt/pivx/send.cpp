@@ -132,8 +132,7 @@ void SendWidget::refreshView(){
     QString btnText;
     btnText = tr("Send ZNZ");
     ui->pushButtonAddRecipient->setVisible(true);
-    ui->pushButtonSave->setText(btnText);
-
+    ui->pushButtonSave->setText((isChecked ? tr("Send ") : tr("Send z")) + QString(CURRENCY_UNIT.c_str()));
     refreshAmounts();
 }
 
@@ -504,7 +503,7 @@ void SendWidget::onCoinControlClicked(){
         ui->btnCoinControl->setActive(CoinControlDialog::coinControl->HasSelected());
         refreshAmounts();
     } else {
-        inform(tr("You don't have any ZNZ to select."));
+        inform(tr("You don't have any %1 to select.").arg(CURRENCY_UNIT.c_str()));
     }
 }
 

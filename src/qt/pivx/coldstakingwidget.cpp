@@ -137,7 +137,7 @@ ColdStakingWidget::ColdStakingWidget(ZENZOGUI* parent) :
     setCssProperty(ui->labelEmpty, "text-empty");
 
     ui->btnCoinControl->setTitleClassAndText("btn-title-grey", "Coin Control");
-    ui->btnCoinControl->setSubTitleClassAndText("text-subtitle", "Select ZNZ outputs to delegate.");
+    ui->btnCoinControl->setSubTitleClassAndText("text-subtitle", tr("Select %1 outputs to delegate.").arg(CURRENCY_UNIT.c_str()));
 
     ui->btnColdStaking->setTitleClassAndText("btn-title-grey", "Create Cold Staking Address");
     ui->btnColdStaking->setSubTitleClassAndText("text-subtitle", "Creates an address to receive delegated coins\nand stake them on their owner's behalf.");
@@ -531,7 +531,7 @@ void ColdStakingWidget::onCoinControlClicked(){
             coinControlDialog->exec();
             ui->btnCoinControl->setActive(CoinControlDialog::coinControl->HasSelected());
         } else {
-            inform(tr("You don't have any ZNZ to select."));
+            inform(tr("You don't have any %1 to select.").arg(CURRENCY_UNIT.c_str()));
         }
     }
 }
@@ -777,7 +777,7 @@ void ColdStakingWidget::updateStakingTotalLabel()
 {
     const CAmount& total = csModel->getTotalAmount();
     ui->labelStakingTotal->setText(tr("Total Staking: %1").arg(
-            (total == 0) ? "0.00 ZNZ" : GUIUtil::formatBalance(total, nDisplayUnit))
+            (total == 0) ? "0.00 " + QString(CURRENCY_UNIT.c_str()) : GUIUtil::formatBalance(total, nDisplayUnit))
     );
 }
 

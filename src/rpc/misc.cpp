@@ -1,7 +1,8 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2020 The PIVX developers
+// Copyright (c) 2015-2024 The PIVX Core developers
+// Copyright (c) 2018-2024 The ZENZO Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -81,8 +82,8 @@ UniValue getinfo(const UniValue& params, bool fHelp)
             "  \"keypoololdest\": xxxxxx,      (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
             "  \"keypoolsize\": xxxx,          (numeric) how many new keys are pre-generated\n"
             "  \"unlocked_until\": ttt,        (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked\n"
-            "  \"paytxfee\": x.xxxx,           (numeric) the transaction fee set in ZNZ/kb\n"
-            "  \"relayfee\": x.xxxx,           (numeric) minimum relay fee for non-free transactions in ZNZ/kb\n"
+            "  \"paytxfee\": x.xxxx,           (numeric) the transaction fee set in " + CURRENCY_UNIT + "/kB\n"
+            "  \"relayfee\": x.xxxx,           (numeric) minimum relay fee for transactions in " + CURRENCY_UNIT + "/kB\n"
             "  \"errors\": \"...\"             (string) any error messages\n"
             "}\n"
 

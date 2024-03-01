@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Bitcoin Core developers
+# Copyright (c) 2015-2024 The PIVX Core developers
+# Copyright (c) 2018-2024 The ZENZO Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Verify that starting pivx with -h works as expected."""
@@ -18,7 +20,7 @@ class HelpTest(PivxTestFramework):
         # Don't start the node
 
     def run_test(self):
-        self.log.info("Start pivx with -h for help text")
+        self.log.info("Start pivx with -? for help text")
         self.nodes[0].start(extra_args=['-?'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         # Node should exit immediately and output help to stdout.
         ret_code = self.nodes[0].process.wait(timeout=1)

@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2020 The PIVX developers
+// Copyright (c) 2015-2024 The PIVX Core developers
+// Copyright (c) 2018-2024 The ZENZO Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -85,10 +86,10 @@ void checkBudgetInputs(const UniValue& params, std::string &strProposalName, std
 
     nAmount = AmountFromValue(params[5]);
     if (nAmount < 10 * COIN)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %d is less than minimum 10 ZNZ allowed", FormatMoney(nAmount)));
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %s is less than minimum 10 %s allowed", FormatMoney(nAmount), CURRENCY_UNIT));
 
     if (nAmount > budget.GetTotalBudget(nBlockStart))
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %d more than max of %d", FormatMoney(nAmount), FormatMoney(budget.GetTotalBudget(nBlockStart))));
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %s more than max of %s", FormatMoney(nAmount), FormatMoney(budget.GetTotalBudget(nBlockStart))));
 }
 
 UniValue preparebudget(const UniValue& params, bool fHelp)
